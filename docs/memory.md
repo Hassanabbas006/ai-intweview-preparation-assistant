@@ -11,7 +11,7 @@ Living progress log. Update this after every phase (or every session) so a new s
 
 ## Completed
 
-- Phase 0: Foundation (Repository initialized with Next.js 14 App Router, Prisma schema with 7 core models, Tailwind CSS calm & trustworthy tokens mapped to design.md, accessible UI kit components, CI workflow, and strict zero-IP tracking guardrail).
+- Phase 0: Foundation (Repository initialized with Next.js 14 App Router, Prisma schema with 7 core models pushed to Supabase PostgreSQL, Tailwind CSS calm & trustworthy tokens mapped to design.md, accessible UI kit components, CI workflow, and strict zero-IP tracking guardrail).
 
 ## Currently working on
 
