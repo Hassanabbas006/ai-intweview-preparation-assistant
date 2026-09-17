@@ -15,7 +15,7 @@ Living progress log. Update this after every phase (or every session) so a new s
 
 ## Currently working on
 
-*(Ready for Phase 1: Auth (user + admin))*
+- Phase 1: Auth (user + admin) — Email/password + Google OAuth signup/login, TOTP 2FA (Google Authenticator compatible), isolated admin login on `/admin/login` with mandatory 2FA, zero IP logging.
 
 ## Notes / deviations from plan
 
