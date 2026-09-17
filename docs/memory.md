@@ -11,13 +11,12 @@ Living progress log. Update this after every phase (or every session) so a new s
 
 ## Completed
 
-*(Nothing yet — entries will go here as phases wrap up, e.g.:)*
-*(- Phase 0: repo scaffolded, Prisma schema pushed, Tailwind theme wired to design.md tokens)*
+- Phase 0: Foundation (Repository initialized with Next.js 14 App Router, Prisma schema with 7 core models, Tailwind CSS calm & trustworthy tokens mapped to design.md, accessible UI kit components, CI workflow, and strict zero-IP tracking guardrail).
 
 ## Currently working on
 
-- Phase 0: Foundation (Repository setup, Prisma schema, Tailwind design tokens, UI kit, and CI/CD workflow)
+*(Ready for Phase 1: Auth (user + admin))*
 
 ## Notes / deviations from plan
 
-*(Anything that changed from PRD.md / Architecture.md / Phases.md during actual building goes here, so the docs and reality don't silently drift apart.)*
+- Routes under `(admin)` were structured as `/admin/login` and `/admin/dashboard` to avoid route collision with the user `/dashboard` while preserving isolated admin session scope per `Architecture.md`.
