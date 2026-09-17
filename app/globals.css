@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light mode palette per design.md */
+  --primary: #3D6FB4;
+  --primary-dark: #1F3D63;
+  --primary-light: #6FA8E0;
+  --secondary: #7FB3A6;
+  --background: #F7F9FB;
+  --surface: #FFFFFF;
+  --border: #DCE3EA;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --success: #4CAF7D;
+  --warning: #E0A458;
+  --error: #E2635F;
+}
+
+.dark {
+  /* Dark mode palette per design.md */
+  --primary: #6FA8E0;
+  --primary-dark: #3D6FB4;
+  --primary-light: #BFDAF5;
+  --secondary: #8FC3B6;
+  --background: #0F1A24;
+  --surface: #1B2735;
+  --border: #2C3B4B;
+  --text-primary: #E5EAF0;
+  --text-secondary: #94A3B8;
+  --success: #5FC490;
+  --warning: #EDB877;
+  --error: #E77E7A;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), system-ui, -apple-system, sans-serif;
+}

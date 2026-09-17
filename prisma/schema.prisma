@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  PREMIUM
+}
+
+enum AdminRole {
+  ADMIN
+  SUPERADMIN
+}
+
+enum InterviewType {
+  HR
+  APTITUDE
+  MANAGERIAL
+  DOMAIN
+}
+
+enum InterviewModality {
+  TEXT
+  VOICE
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum AtsScanMode {
+  JOB_TARGETED
+  GENERAL
+}
+
+// Candidate / regular user model
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  passwordHash     String?            @map("password_hash")
+  googleId         String?            @unique @map("google_id")
+  role             UserRole           @default(USER)
+  twoFactorEnabled Boolean            @default(false) @map("2fa_enabled")
+  twoFactorSecret  String?            @map("2fa_secret")
+  domain           String?
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  loginLogs        LoginLog[]
+  sessions         InterviewSession[]
+  resumes          Resume[]
+  atsScanLogs      AtsScanLog[]
+
+  @@map("users")
+}
+
+// Fully isolated Admin model (separate auth system per Rules.md)
+model Admin {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  passwordHash     String     @map("password_hash")
+  twoFactorEnabled Boolean    @default(true) @map("2fa_enabled") // Mandatory per architecture
+  twoFactorSecret  String?    @map("2fa_secret")
+  role             AdminRole  @default(ADMIN)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  loginLogs        LoginLog[]
+
+  @@map("admins")
+}
+
+// Authentication audit log (STRICT RULE: NO IP ADDRESS LOGGING ANYWHERE)
+model LoginLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  adminId   String?  @map("admin_id")
+  timestamp DateTime @default(now())
+  method    String   // e.g. "CREDENTIALS", "GOOGLE", "ADMIN_CREDENTIALS"
+  success   Boolean
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([adminId])
+  @@map("login_logs")
+}
+
+// Mock interview sessions
+model InterviewSession {
+  id          String            @id @default(cuid())
+  userId      String            @map("user_id")
+  type        InterviewType
+  domain      String?
+  focusArea   String?           @map("focus_area")
+  modality    InterviewModality @default(TEXT)
+  startedAt   DateTime          @default(now()) @map("started_at")
+  completedAt DateTime?         @map("completed_at")
+  status      SessionStatus     @default(IN_PROGRESS)
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report      InterviewReport?
+
+  @@index([userId])
+  @@map("interview_sessions")
+}
+
+// Evaluator report generated after an interview session
+model InterviewReport {
+  id         String           @id @default(cuid())
+  sessionId  String           @unique @map("session_id")
+  scores     Json             // Breakdown scores (e.g. communication, technical, overall)
+  strengths  Json             // Array of identified strengths
+  weaknesses Json             // Array of identified weaknesses
+  tips       Json             // Array of actionable improvement suggestions
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("interview_reports")
+}
+
+// Uploaded candidate resumes
+model Resume {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  fileUrl     String       @map("file_url")
+  fileName    String       @map("file_name")
+  fileSize    Int          @map("file_size")
+  parsedData  Json?        @map("parsed_data") // Structured extraction: skills, experience, education
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  atsScanLogs AtsScanLog[]
+
+  @@index([userId])
+  @@map("resumes")
+}
+
+// ATS scoring & suggestion logs
+model AtsScanLog {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  resumeId    String      @map("resume_id")
+  mode        AtsScanMode
+  jdId        String?     @map("jd_id")
+  jdText      String?     @map("jd_text")
+  score       Float
+  suggestions Json        // Formatting fixes, keyword gaps, phrasing improvements
+  timestamp   DateTime    @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume      Resume      @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeId])
+  @@map("ats_scan_logs")
+}
