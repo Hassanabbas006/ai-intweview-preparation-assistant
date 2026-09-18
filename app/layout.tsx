@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/components/auth-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -38,7 +39,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased min-h-screen bg-background text-text-primary selection:bg-primary/20">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

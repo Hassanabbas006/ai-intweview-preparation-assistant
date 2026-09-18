@@ -1,11 +1,12 @@
-/**
- * Auth & 2FA Helper Stub per Architecture.md & Rules.md.
- * Implementation will occur in Phase 1: Auth (user + admin).
- */
+export * from "./password";
+export * from "./totp";
+export * from "./admin-session";
+export * from "./nextauth-options";
 
 export interface AuthSessionUser {
   id: string;
   email: string;
   role: string;
+  domain?: string | null;
   twoFactorEnabled: boolean;
 }
