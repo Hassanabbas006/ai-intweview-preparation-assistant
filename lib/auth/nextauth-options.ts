@@ -101,7 +101,7 @@ export const authOptions: AuthOptions = {
       if (account?.provider === "google") {
         if (!user.email) return false;
 
-        const email = user.email.toLowerCase();
+        const email = user.email.trim().toLowerCase();
 
         // Upsert candidate record for Google sign-in
         const existingUser = await prisma.user.findUnique({
@@ -140,14 +140,26 @@ export const authOptions: AuthOptions = {
       return true;
     },
     async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.domain = user.domain;
-        token.twoFactorEnabled = user.twoFactorEnabled;
+      if (user && user.email) {
+        // ALWAYS query the database by lowercased email to ensure token.id is the database User.id
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email.trim().toLowerCase() },
+        });
+
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.domain = dbUser.domain;
+          token.twoFactorEnabled = dbUser.twoFactorEnabled;
+        } else {
+          token.id = user.id;
+          token.role = user.role || "USER";
+          token.domain = user.domain || null;
+          token.twoFactorEnabled = user.twoFactorEnabled || false;
+        }
       }
 
-      // Handle session updates (e.g. enabling 2FA)
+      // Handle session updates (e.g. enabling/disabling 2FA or updating domain)
       if (trigger === "update" && session) {
         if (session.domain !== undefined) token.domain = session.domain;
         if (session.twoFactorEnabled !== undefined) token.twoFactorEnabled = session.twoFactorEnabled;

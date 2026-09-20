@@ -8,16 +8,22 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !session?.user?.email) {
       return errorResponse("Unauthorized. Please log in first.", 401);
     }
 
     const body = await req.json();
     const { password } = body;
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-    });
+    let user = session.user.id
+      ? await prisma.user.findUnique({ where: { id: session.user.id } })
+      : null;
+
+    if (!user && session.user.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email.trim().toLowerCase() },
+      });
+    }
 
     if (!user) {
       return errorResponse("User not found.", 404);

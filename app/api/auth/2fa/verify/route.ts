@@ -8,7 +8,7 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.id && !session?.user?.email) {
       return errorResponse("Unauthorized. Please log in first.", 401);
     }
 
@@ -19,9 +19,15 @@ export async function POST(req: NextRequest) {
       return errorResponse("Verification token is required.", 400);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-    });
+    let user = session.user.id
+      ? await prisma.user.findUnique({ where: { id: session.user.id } })
+      : null;
+
+    if (!user && session.user.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email.trim().toLowerCase() },
+      });
+    }
 
     if (!user || !user.twoFactorSecret) {
       return errorResponse("No pending 2FA setup found. Please initiate setup first.", 400);
