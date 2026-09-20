@@ -1,20 +1,26 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Modal } from "@/components/ui/modal";
-import { CheckCircle2, ShieldAlert, Sparkles, Terminal, FileText, MessagesSquare } from "lucide-react";
+import { 
+  Sparkles, 
+  ShieldCheck, 
+  ArrowRight, 
+  LogIn, 
+  UserPlus, 
+  Briefcase, 
+  FileText, 
+  Code2, 
+  Lock 
+} from "lucide-react";
 
 export default function Home() {
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background text-text-primary transition-colors">
       {/* Top Navigation */}
       <header className="border-b border-border bg-surface sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -28,213 +34,147 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <Badge variant="primary">Phase 0: Foundation</Badge>
             <ThemeToggle />
+            <Link href="/admin/login">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-primary">
+                <Lock className="w-3.5 h-3.5" /> Admin
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                <LogIn className="w-4 h-4" /> Sign In
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button variant="primary" size="sm" className="flex items-center gap-1.5">
+                <UserPlus className="w-4 h-4" /> Get Started
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-        {/* Hero Banner */}
-        <div className="space-y-3">
-          <h1 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight text-primary-dark dark:text-primary-light">
-            Foundation & Design System
-          </h1>
-          <p className="text-base text-text-secondary max-w-3xl">
-            Phase 0 setup complete. Next.js App Router, Tailwind CSS design tokens, Prisma ORM schema,
-            and accessible UI components adhering to the calm and trustworthy visual direction.
-          </p>
-        </div>
-
-        {/* Foundation Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-2 text-primary">
-                <Terminal className="h-5 w-5" />
-                <CardTitle>Architecture</CardTitle>
-              </div>
-              <CardDescription>Directory scaffolding & Next.js 14</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-text-secondary text-xs">
-              <div className="flex items-center justify-between">
-                <span>App Router structure</span>
-                <Badge variant="success">Configured</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Standard API handler</span>
-                <Badge variant="success">Enforced</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>GitHub Actions CI</span>
-                <Badge variant="success">Ready</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-2 text-secondary">
-                <ShieldAlert className="h-5 w-5" />
-                <CardTitle>Database & Security</CardTitle>
-              </div>
-              <CardDescription>PostgreSQL schema with Prisma</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-text-secondary text-xs">
-              <div className="flex items-center justify-between">
-                <span>7 Core tables modeled</span>
-                <Badge variant="success">Ready</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Separate Admin entity</span>
-                <Badge variant="success">Isolated</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>IP tracking guardrail</span>
-                <Badge variant="success">Zero-IP Enforced</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-2 text-primary">
-                <Sparkles className="h-5 w-5" />
-                <CardTitle>Design Tokens</CardTitle>
-              </div>
-              <CardDescription>Calm & trustworthy palette</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-text-secondary text-xs">
-              <div className="flex items-center justify-between">
-                <span>Light & Dark mode</span>
-                <Badge variant="success">Interactive</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Manrope & Inter fonts</span>
-                <Badge variant="success">Loaded</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>8px / 12px radii tokens</span>
-                <Badge variant="success">Active</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Interactive UI Kit Showcase */}
-        <Card className="space-y-6">
-          <CardHeader>
-            <CardTitle>UI Kit Component Verification</CardTitle>
-            <CardDescription>
-              Test interactive buttons, inputs, modal dialogs, and color tokens.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-8">
-            {/* Buttons & Modal trigger */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Buttons (Variants & Sizes)
-              </h4>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button variant="primary" size="md">
-                  Primary Action
-                </Button>
-                <Button variant="secondary" size="md">
-                  Secondary Action
-                </Button>
-                <Button variant="outline" size="md">
-                  Outline
-                </Button>
-                <Button variant="ghost" size="md">
-                  Ghost
-                </Button>
-                <Button variant="destructive" size="md">
-                  Destructive (Muted Coral)
-                </Button>
-                <Button variant="primary" size="md" onClick={() => setModalOpen(true)}>
-                  Open Modal Preview
-                </Button>
-              </div>
-            </div>
-
-            {/* Inputs & Form Controls */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Form Inputs
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-primary">
-                    Test Input Field
-                  </label>
-                  <Input
-                    placeholder="Enter your target role (e.g. Software Engineer)..."
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text-primary">
-                    Disabled State
-                  </label>
-                  <Input disabled placeholder="Disabled field..." />
-                </div>
-              </div>
-            </div>
-
-            {/* Status Badges */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Status Badges & Tags
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="neutral">Neutral Tag</Badge>
-                <Badge variant="primary">Primary Badge</Badge>
-                <Badge variant="secondary">Secondary Tag</Badge>
-                <Badge variant="success">Passed / ATS 92%</Badge>
-                <Badge variant="warning">Action Needed</Badge>
-                <Badge variant="error">Missing Keyword</Badge>
-              </div>
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Palette verified against docs/design.md tokens</span>
-            <span className="font-mono text-[11px]">v0.1.0 • Foundation Ready</span>
-          </CardFooter>
-        </Card>
-
-        {/* Modal Dialog */}
-        <Modal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title="Modal Component Preview"
-          description="Accessible dialog container for prompts, confirmations, and TOTP 2FA setups."
-        >
-          <div className="space-y-4 text-sm text-text-secondary">
-            <p>
-              This dialog implements focus management, backdrop blur, escape key dismissal, and
-              the 12px border radius conforming to the project design guidelines.
-            </p>
-            <div className="flex justify-end space-x-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => setModalOpen(false)}>
-                Confirm
-              </Button>
-            </div>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+        {/* Hero Section */}
+        <div className="text-center space-y-4 max-w-3xl mx-auto py-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary mb-2">
+            <Sparkles className="w-3.5 h-3.5" /> Next-Gen AI Interview & ATS Platform
           </div>
-        </Modal>
+          <h1 className="text-4xl sm:text-5xl font-heading font-extrabold tracking-tight text-primary-dark dark:text-primary-light">
+            Master Technical & HR Interviews with Real-Time AI
+          </h1>
+          <p className="text-base sm:text-lg text-text-secondary leading-relaxed">
+            Practice adaptive mock interviews across HR, Aptitude, Managerial, and Domain tracks with real-time feedback, ATS resume optimization, and multi-factor security.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            <Link href="/signup">
+              <Button size="lg" className="flex items-center gap-2 shadow-soft text-base px-8">
+                Start Practicing Free <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="outline" size="lg" className="flex items-center gap-2 text-base px-8">
+                Candidate Login
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+          <Card className="hover:border-primary/40 transition-colors shadow-soft">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2 rounded-input bg-primary/10 text-primary w-fit">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <Badge variant="primary">Phase 2</Badge>
+              </div>
+              <CardTitle className="text-lg mt-3">Adaptive Mock Interviews</CardTitle>
+              <CardDescription>
+                Simulate real technical and behavioral interviews with token-by-token streaming, contextual follow-ups, and tailored rubrics.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:border-primary/40 transition-colors shadow-soft">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2 rounded-input bg-secondary/10 text-secondary w-fit">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <Badge variant="secondary">Phase 4</Badge>
+              </div>
+              <CardTitle className="text-lg mt-3">ATS Resume Scanner</CardTitle>
+              <CardDescription>
+                Upload your resume for job-targeted or general ATS scoring, keyword gap identification, and structural suggestions.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:border-primary/40 transition-colors shadow-soft">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2 rounded-input bg-primary/10 text-primary w-fit">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <Badge variant="success">Phase 1 Complete</Badge>
+              </div>
+              <CardTitle className="text-lg mt-3">Secure Multi-Factor Auth</CardTitle>
+              <CardDescription>
+                Google OAuth, email/password authentication, Google Authenticator TOTP 2FA, and isolated zero-IP admin security.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Quick Links Section */}
+        <Card className="bg-surface border-border">
+          <CardHeader>
+            <CardTitle className="text-base">Quick Portal Navigation</CardTitle>
+            <CardDescription>Direct shortcuts to application entry points</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link href="/login" className="p-4 rounded-input border border-border hover:border-primary transition-colors bg-background flex flex-col justify-between">
+              <div>
+                <p className="font-semibold text-sm text-text-primary">Candidate Login</p>
+                <p className="text-xs text-text-secondary mt-1">Sign in with Email/Password or Google OAuth</p>
+              </div>
+              <span className="text-xs text-primary font-medium mt-3 flex items-center gap-1">Open Login →</span>
+            </Link>
+
+            <Link href="/signup" className="p-4 rounded-input border border-border hover:border-primary transition-colors bg-background flex flex-col justify-between">
+              <div>
+                <p className="font-semibold text-sm text-text-primary">Candidate Registration</p>
+                <p className="text-xs text-text-secondary mt-1">Create an account and choose your career domain</p>
+              </div>
+              <span className="text-xs text-primary font-medium mt-3 flex items-center gap-1">Sign Up →</span>
+            </Link>
+
+            <Link href="/admin/login" className="p-4 rounded-input border border-border hover:border-primary transition-colors bg-background flex flex-col justify-between">
+              <div>
+                <p className="font-semibold text-sm text-text-primary flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-warning" /> Admin Portal
+                </p>
+                <p className="text-xs text-text-secondary mt-1">Privileged access with mandatory 2FA</p>
+              </div>
+              <span className="text-xs text-primary font-medium mt-3 flex items-center gap-1">Admin Access →</span>
+            </Link>
+          </CardContent>
+        </Card>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-border bg-surface py-6 text-center text-xs text-text-secondary mt-auto">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>AI Interview Preparation Assistant • Phase 0: Foundation</span>
-          <span>Google Antigravity</span>
+          <span>AI Interview Preparation Assistant</span>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="hover:text-primary transition-colors">Login</Link>
+            <Link href="/signup" className="hover:text-primary transition-colors">Signup</Link>
+            <Link href="/admin/login" className="hover:text-primary transition-colors">Admin</Link>
+          </div>
         </div>
       </footer>
     </div>
