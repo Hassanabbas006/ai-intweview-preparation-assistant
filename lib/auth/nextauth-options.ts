@@ -108,9 +108,15 @@ export const authOptions: AuthOptions = {
           where: { email },
         });
 
-        let candidateId = existingUser?.id;
+        let candidateId: string;
 
         if (existingUser) {
+          candidateId = existingUser.id;
+          user.id = existingUser.id; // Assign database User ID to NextAuth user object
+          user.role = existingUser.role;
+          user.domain = existingUser.domain;
+          user.twoFactorEnabled = existingUser.twoFactorEnabled;
+
           if (!existingUser.googleId) {
             await prisma.user.update({
               where: { id: existingUser.id },
@@ -126,6 +132,10 @@ export const authOptions: AuthOptions = {
             },
           });
           candidateId = newUser.id;
+          user.id = newUser.id; // Assign database User ID to NextAuth user object
+          user.role = newUser.role;
+          user.domain = newUser.domain;
+          user.twoFactorEnabled = newUser.twoFactorEnabled;
         }
 
         // Record Google OAuth login audit log (STRICT RULE: NO IP ADDRESS LOGGING)
@@ -140,23 +150,12 @@ export const authOptions: AuthOptions = {
       return true;
     },
     async jwt({ token, user, trigger, session }) {
-      if (user && user.email) {
-        // ALWAYS query the database by lowercased email to ensure token.id is the database User.id
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email.trim().toLowerCase() },
-        });
-
-        if (dbUser) {
-          token.id = dbUser.id;
-          token.role = dbUser.role;
-          token.domain = dbUser.domain;
-          token.twoFactorEnabled = dbUser.twoFactorEnabled;
-        } else {
-          token.id = user.id;
-          token.role = user.role || "USER";
-          token.domain = user.domain || null;
-          token.twoFactorEnabled = user.twoFactorEnabled || false;
-        }
+      if (user) {
+        // Fast, synchronous token assignment from user object
+        token.id = user.id;
+        token.role = user.role || "USER";
+        token.domain = user.domain || null;
+        token.twoFactorEnabled = user.twoFactorEnabled || false;
       }
 
       // Handle session updates (e.g. enabling/disabling 2FA or updating domain)
