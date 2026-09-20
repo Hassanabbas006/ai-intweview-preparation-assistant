@@ -29,6 +29,34 @@ function LoginForm() {
     setLoading(true);
 
     try {
+      // Pre-flight check: verify credentials & check if 2FA code is needed
+      const checkRes = await fetch("/api/auth/2fa/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          twoFactorCode: requires2FA ? twoFactorCode : undefined,
+        }),
+      });
+
+      const checkData = await checkRes.json();
+
+      if (!checkRes.ok || checkData.error) {
+        setError(checkData.message || "Invalid credentials.");
+        setLoading(false);
+        return;
+      }
+
+      // If user has 2FA enabled and code is not yet provided:
+      if (checkData.data?.requires2FA) {
+        setRequires2FA(true);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      // Pre-flight passed! Establish NextAuth candidate session
       const result = await signIn("credentials", {
         email,
         password,
@@ -37,21 +65,8 @@ function LoginForm() {
         callbackUrl,
       });
 
-      if (!result) {
-        setError("An unexpected error occurred. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      if (result.error) {
-        if (result.error.includes("2FA_REQUIRED") || result.error === "2FA_REQUIRED") {
-          setRequires2FA(true);
-          setError(null);
-          setLoading(false);
-          return;
-        }
-
-        setError(result.error);
+      if (!result || result.error) {
+        setError("Authentication session creation failed. Please try again.");
         setLoading(false);
         return;
       }
@@ -154,6 +169,7 @@ function LoginForm() {
                   onClick={() => {
                     setRequires2FA(false);
                     setTwoFactorCode("");
+                    setError(null);
                   }}
                   className="text-xs text-primary hover:underline"
                 >
