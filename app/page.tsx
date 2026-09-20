@@ -90,7 +90,7 @@ export default function Home() {
                 <div className="p-2 rounded-input bg-primary/10 text-primary w-fit">
                   <Briefcase className="w-5 h-5" />
                 </div>
-                <Badge variant="primary">Phase 2</Badge>
+                <Badge variant="neutral">Coming Soon</Badge>
               </div>
               <CardTitle className="text-lg mt-3">Adaptive Mock Interviews</CardTitle>
               <CardDescription>
@@ -105,7 +105,7 @@ export default function Home() {
                 <div className="p-2 rounded-input bg-secondary/10 text-secondary w-fit">
                   <FileText className="w-5 h-5" />
                 </div>
-                <Badge variant="secondary">Phase 4</Badge>
+                <Badge variant="neutral">Coming Soon</Badge>
               </div>
               <CardTitle className="text-lg mt-3">ATS Resume Scanner</CardTitle>
               <CardDescription>
@@ -120,7 +120,7 @@ export default function Home() {
                 <div className="p-2 rounded-input bg-primary/10 text-primary w-fit">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <Badge variant="success">Phase 1 Complete</Badge>
+                <Badge variant="success">Available Now</Badge>
               </div>
               <CardTitle className="text-lg mt-3">Secure Multi-Factor Auth</CardTitle>
               <CardDescription>

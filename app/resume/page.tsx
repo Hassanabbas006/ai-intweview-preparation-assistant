@@ -8,10 +8,10 @@ export default function ResumePage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Resume ATS Scanner</CardTitle>
-            <Badge variant="primary">Phase 4</Badge>
+            <Badge variant="neutral">Coming Soon</Badge>
           </div>
           <CardDescription>
-            Resume upload, ATS health scoring, and JD matching suggestions will be implemented in Phase 4.
+            Resume upload, ATS match scoring, keyword gap analysis, and JD alignment suggestions.
           </CardDescription>
         </CardHeader>
       </Card>

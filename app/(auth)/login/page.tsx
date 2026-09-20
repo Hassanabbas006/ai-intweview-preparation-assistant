@@ -93,10 +93,7 @@ function LoginForm() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>{requires2FA ? "Two-Factor Verification" : "Candidate Login"}</CardTitle>
-            <Badge variant="primary">Phase 1</Badge>
-          </div>
+          <CardTitle>{requires2FA ? "Two-Factor Verification" : "Candidate Login"}</CardTitle>
           <CardDescription>
             {requires2FA
               ? "Enter the 6-digit code from your authenticator app to complete sign-in."

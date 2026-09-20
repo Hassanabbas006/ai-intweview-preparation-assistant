@@ -8,10 +8,10 @@ export default function CodingArenaPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Coding Arena</CardTitle>
-            <Badge variant="primary">Phase 7</Badge>
+            <Badge variant="neutral">Coming Soon</Badge>
           </div>
           <CardDescription>
-            Monaco editor, problem bank, and Judge0/Piston code runner will be implemented in Phase 7.
+            Monaco code editor, technical problem bank, and automated test execution.
           </CardDescription>
         </CardHeader>
       </Card>

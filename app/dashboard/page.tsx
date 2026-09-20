@@ -125,7 +125,7 @@ export default function UserDashboardPage() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-primary" /> Mock Interview Engine
                   </CardTitle>
-                  <Badge variant="primary">Phase 2</Badge>
+                  <Badge variant="neutral">Coming Soon</Badge>
                 </div>
                 <CardDescription>
                   Interactive AI-led technical & behavioral interviews with real-time feedback.
@@ -146,7 +146,7 @@ export default function UserDashboardPage() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="w-4 h-4 text-primary" /> ATS Resume Scanner
                   </CardTitle>
-                  <Badge variant="secondary">Phase 4</Badge>
+                  <Badge variant="neutral">Coming Soon</Badge>
                 </div>
                 <CardDescription>
                   Upload your resume and get match scores, keyword gap analysis, and tailored fixes.
@@ -167,7 +167,7 @@ export default function UserDashboardPage() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Code2 className="w-4 h-4 text-primary" /> Coding Arena
                   </CardTitle>
-                  <Badge variant="secondary">Phase 7</Badge>
+                  <Badge variant="neutral">Coming Soon</Badge>
                 </div>
                 <CardDescription>
                   Monaco-powered coding sandbox with automated test case evaluation.

@@ -86,10 +86,7 @@ export default function SignupPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Candidate Registration</CardTitle>
-              <Badge variant="secondary">Phase 1</Badge>
-            </div>
+            <CardTitle>Candidate Registration</CardTitle>
             <CardDescription>
               Prepare for your next technical interview with AI-powered mock rounds
             </CardDescription>

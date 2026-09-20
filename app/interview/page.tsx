@@ -8,10 +8,10 @@ export default function InterviewConfigPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Mock Interview Configuration</CardTitle>
-            <Badge variant="primary">Phase 2</Badge>
+            <Badge variant="neutral">Coming Soon</Badge>
           </div>
           <CardDescription>
-            Interview setup (HR, Aptitude, Managerial, Domain) will be implemented in Phase 2.
+            Interactive AI-led technical and behavioral mock interview rounds with real-time feedback.
           </CardDescription>
         </CardHeader>
       </Card>
