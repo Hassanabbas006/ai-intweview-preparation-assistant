@@ -9,16 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-const DOMAIN_OPTIONS = [
-  { value: "Frontend", label: "Frontend Engineering" },
-  { value: "Backend", label: "Backend Engineering" },
-  { value: "Fullstack", label: "Fullstack Engineering" },
-  { value: "AI_ML", label: "AI & Machine Learning" },
-  { value: "DevOps", label: "DevOps & Cloud" },
-  { value: "Data_Science", label: "Data Science & Analytics" },
-  { value: "Mobile", label: "Mobile (iOS / Android)" },
-];
+import { DOMAIN_OPTIONS } from "@/lib/constants/domains";
 
 export default function SignupPage() {
   const router = useRouter();

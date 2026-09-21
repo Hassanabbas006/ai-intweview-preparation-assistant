@@ -1,19 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ShieldCheck, ShieldAlert, ArrowLeft, KeyRound, CheckCircle2 } from "lucide-react";
+import {
+  ShieldCheck,
+  ShieldAlert,
+  ArrowLeft,
+  KeyRound,
+  CheckCircle2,
+  Briefcase,
+  Save,
+} from "lucide-react";
+import { DOMAIN_OPTIONS } from "@/lib/constants/domains";
 
 export default function SecuritySettingsPage() {
   const { data: session, update, status } = useSession();
 
+  // Domain state
+  const [selectedDomain, setSelectedDomain] = useState<string>("Fullstack");
+  const [domainLoading, setDomainLoading] = useState(false);
+  const [domainSuccess, setDomainSuccess] = useState<string | null>(null);
+  const [domainError, setDomainError] = useState<string | null>(null);
+
+  // 2FA state
   const [setupStep, setSetupStep] = useState<"idle" | "qr_ready" | "success">("idle");
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -25,18 +48,62 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Sync domain from session once loaded
+  useEffect(() => {
+    if (session?.user?.domain) {
+      setSelectedDomain(session.user.domain);
+    }
+  }, [session?.user?.domain]);
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <p className="text-sm text-text-secondary animate-pulse">Loading security settings...</p>
+        <p className="text-sm text-text-secondary animate-pulse">Loading account settings...</p>
       </div>
     );
   }
 
   const is2FAActive = session?.user?.twoFactorEnabled;
 
+  // Handle Domain Update
+  const handleSaveDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDomainError(null);
+    setDomainSuccess(null);
+    setDomainLoading(true);
+
+    try {
+      const res = await fetch("/api/user/domain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: selectedDomain }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setDomainError(data.message || "Failed to update target domain.");
+        setDomainLoading(false);
+        return;
+      }
+
+      // Update client session token
+      await update({ domain: selectedDomain });
+
+      const domainLabel =
+        DOMAIN_OPTIONS.find((d) => d.value === selectedDomain)?.label || selectedDomain;
+      setDomainSuccess(`Target track successfully updated to ${domainLabel}.`);
+      setDomainLoading(false);
+    } catch {
+      setDomainError("Network error while updating target domain.");
+      setDomainLoading(false);
+    }
+  };
+
+  // Handle 2FA Setup Initiation
   const handleStartSetup = async () => {
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     try {
@@ -61,6 +128,7 @@ export default function SecuritySettingsPage() {
     }
   };
 
+  // Handle 2FA Verification
   const handleVerifySetup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -92,6 +160,7 @@ export default function SecuritySettingsPage() {
     }
   };
 
+  // Handle 2FA Disable
   const handleDisable2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -129,19 +198,100 @@ export default function SecuritySettingsPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">
-          <Link href="/dashboard" className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
           <ThemeToggle />
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold font-heading text-text-primary">Two-Factor Authentication (2FA)</h1>
+          <h1 className="text-2xl font-bold font-heading text-text-primary">
+            Account & Security Settings
+          </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Add an extra layer of security using Google Authenticator, 1Password, or any TOTP app.
+            Manage your career interview track, profile preferences, and multi-factor authentication.
           </p>
         </div>
 
+        {/* ========================================================================= */}
+        {/* Section 1: Target Track / Domain */}
+        {/* ========================================================================= */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-primary" /> Target Track / Career Domain
+              </CardTitle>
+              <Badge variant="neutral">
+                {DOMAIN_OPTIONS.find((d) => d.value === session?.user?.domain)?.label ||
+                  session?.user?.domain ||
+                  "Fullstack"}
+              </Badge>
+            </div>
+            <CardDescription>
+              Personalize your mock interview question bank, evaluation rubrics, and ATS resume scanning focus.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {domainError && (
+              <div className="mb-4 p-3 rounded-input bg-error/15 border border-error/30 text-error text-sm">
+                {domainError}
+              </div>
+            )}
+
+            {domainSuccess && (
+              <div className="mb-4 p-3 rounded-input bg-success/15 border border-success/30 text-success text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" /> {domainSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveDomain} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-text-secondary">
+                  Primary Discipline / Track
+                </label>
+                <select
+                  value={selectedDomain}
+                  onChange={(e) => {
+                    setSelectedDomain(e.target.value);
+                    setDomainSuccess(null);
+                    setDomainError(null);
+                  }}
+                  disabled={domainLoading}
+                  className="w-full h-10 px-3 py-2 text-sm bg-surface text-text-primary border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                >
+                  {DOMAIN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-text-secondary mt-1">
+                  You can change this track anytime. Interview simulations will adapt accordingly.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="submit"
+                  disabled={domainLoading || selectedDomain === session?.user?.domain}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {domainLoading ? "Saving..." : "Save Track Changes"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* ========================================================================= */}
+        {/* Section 2: Two-Factor Authentication (2FA) */}
+        {/* ========================================================================= */}
         {error && (
           <div className="p-3 rounded-input bg-error/15 border border-error/30 text-error text-sm">
             {error}
@@ -158,7 +308,7 @@ export default function SecuritySettingsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-primary" /> Multi-Factor Protection
+                <KeyRound className="w-5 h-5 text-primary" /> Two-Factor Authentication (2FA)
               </CardTitle>
               {is2FAActive ? (
                 <Badge variant="success">Enabled</Badge>
@@ -168,7 +318,7 @@ export default function SecuritySettingsPage() {
             </div>
             <CardDescription>
               {is2FAActive
-                ? "Your candidate account is currently protected with two-factor authentication."
+                ? "Your candidate account is currently protected with time-based one-time password (TOTP) 2FA."
                 : "Candidate 2FA is optional but strongly recommended to safeguard your evaluations."}
             </CardDescription>
           </CardHeader>
@@ -204,13 +354,17 @@ export default function SecuritySettingsPage() {
                     className="w-48 h-48"
                     unoptimized
                   />
-                  <p className="text-[11px] text-gray-500 font-mono mt-2">Scan with your Authenticator App</p>
+                  <p className="text-[11px] text-gray-500 font-mono mt-2">
+                    Scan with your Authenticator App
+                  </p>
                 </div>
 
                 {secret && (
                   <div className="p-3 bg-surface border border-border rounded-input text-center space-y-1">
                     <p className="text-xs text-text-secondary">Can&apos;t scan? Enter key manually:</p>
-                    <code className="text-xs font-mono font-bold text-primary select-all tracking-wider">{secret}</code>
+                    <code className="text-xs font-mono font-bold text-primary select-all tracking-wider">
+                      {secret}
+                    </code>
                   </div>
                 )}
 
@@ -257,7 +411,9 @@ export default function SecuritySettingsPage() {
                 <div className="p-4 rounded-card bg-success/10 border border-success/30 flex items-start gap-3">
                   <ShieldCheck className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-text-primary">2FA is actively protecting your account</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      2FA is actively protecting your account
+                    </p>
                     <p className="text-xs text-text-secondary leading-relaxed">
                       Every time you log in with your password, you will be prompted for a 6-digit TOTP verification code.
                     </p>
@@ -273,7 +429,10 @@ export default function SecuritySettingsPage() {
                     Disable Two-Factor Authentication
                   </Button>
                 ) : (
-                  <form onSubmit={handleDisable2FA} className="p-4 border border-border rounded-card space-y-3 bg-surface">
+                  <form
+                    onSubmit={handleDisable2FA}
+                    className="p-4 border border-border rounded-card space-y-3 bg-surface"
+                  >
                     <p className="text-xs font-medium text-text-primary">
                       Confirm password to disable 2FA:
                     </p>
