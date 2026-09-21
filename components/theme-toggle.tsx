@@ -14,7 +14,8 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-9 h-9 rounded-input border border-border flex items-center justify-center text-text-secondary">
+      <div className="w-9 h-9 rounded-input border border-border bg-surface flex items-center justify-center text-text-secondary opacity-70">
+        <Moon className="h-4 w-4 text-primary" />
         <span className="sr-only">Toggle theme</span>
       </div>
     );

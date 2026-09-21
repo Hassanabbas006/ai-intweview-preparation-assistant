@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -147,8 +148,7 @@ function LoginForm() {
                       Forgot password?
                     </Link>
                   </div>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

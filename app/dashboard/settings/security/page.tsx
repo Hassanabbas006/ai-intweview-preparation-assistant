@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -436,8 +437,7 @@ export default function SecuritySettingsPage() {
                     <p className="text-xs font-medium text-text-primary">
                       Confirm password to disable 2FA:
                     </p>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Your account password"
                       value={disablePassword}
                       onChange={(e) => setDisablePassword(e.target.value)}

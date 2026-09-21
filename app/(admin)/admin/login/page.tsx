@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Shield, KeyRound, Lock, ArrowLeft } from "lucide-react";
@@ -22,7 +23,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Verify Email and Password
+  // Step 1: Submit Credentials
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -38,7 +39,7 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (!res.ok || data.error) {
-        setError(data.message || "Invalid admin credentials.");
+        setError(data.message || "Invalid administrative credentials.");
         setLoading(false);
         return;
       }
@@ -47,44 +48,40 @@ export default function AdminLoginPage() {
       setStep("totp");
       setLoading(false);
     } catch {
-      setError("Network error. Please try again.");
+      setError("A network error occurred while reaching the admin authentication service.");
       setLoading(false);
     }
   };
 
-  // Step 2: Verify Mandatory 6-Digit TOTP Code
+  // Step 2: Submit 2FA TOTP Code
   const handleTotpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    if (!challengeToken) {
-      setError("Authentication session expired. Please start over.");
-      setStep("credentials");
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch("/api/admin/auth/verify-2fa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challengeToken, code: totpCode }),
+        body: JSON.stringify({
+          challengeToken,
+          totpCode,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok || data.error) {
-        setError(data.message || "Invalid two-factor authentication code.");
+        setError(data.message || "Invalid 2FA authentication code.");
         setLoading(false);
         return;
       }
 
-      // Success! Isolated admin_session cookie is set by the server response
+      // Successful verification -> redirect to privileged admin dashboard
       router.push("/admin/dashboard");
       router.refresh();
     } catch {
-      setError("Network error while validating 2FA.");
+      setError("A network error occurred during TOTP verification.");
       setLoading(false);
     }
   };
@@ -96,27 +93,31 @@ export default function AdminLoginPage() {
       </div>
 
       <div className="w-full max-w-md">
-        {/* Isolated scope notice banner */}
-        <div className="mb-4 flex items-center justify-between text-xs text-text-secondary px-1">
-          <Link href="/login" className="flex items-center gap-1.5 hover:text-primary transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" /> Return to Candidate Portal
-          </Link>
-          <span className="font-mono text-[11px] text-text-secondary">ISOLATED_SCOPE: ADMIN</span>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-input bg-primary/10 text-primary mb-3">
+            <Shield className="w-6 h-6" />
+          </div>
+          <h1 className="font-heading font-bold text-2xl text-text-primary tracking-tight">
+            Administrative Portal
+          </h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Privileged system console & security administration
+          </p>
         </div>
 
-        <Card className="border-primary/40 shadow-soft">
+        <Card className="border-primary/20 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-xl font-heading">
-                <Shield className="w-5 h-5 text-primary" />
-                Admin Authentication
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Lock className="w-4 h-4 text-primary" />
+                {step === "credentials" ? "Admin Authentication" : "2FA Security Challenge"}
               </CardTitle>
-              <Badge variant="warning">Mandatory 2FA</Badge>
+              <Badge variant="primary">Restricted</Badge>
             </div>
             <CardDescription>
               {step === "credentials"
-                ? "Step 1: Enter your privileged administrator credentials."
-                : "Step 2: Enter the 6-digit TOTP code from your Authenticator app."}
+                ? "Step 1 of 2: Enter your administrative email and password."
+                : "Step 2 of 2: Enter your 6-digit TOTP code to establish an isolated admin session."}
             </CardDescription>
           </CardHeader>
 
@@ -145,8 +146,7 @@ export default function AdminLoginPage() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-text-secondary">Password</label>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

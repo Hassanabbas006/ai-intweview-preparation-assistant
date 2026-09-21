@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DOMAIN_OPTIONS } from "@/lib/constants/domains";
@@ -51,12 +52,16 @@ export default function SignupPage() {
         return;
       }
 
-      // Auto sign-in or redirect to login
+      // Registration successful -> redirect to login with registered flag
       router.push("/login?registered=true");
     } catch {
-      setError("A network error occurred. Please check your connection.");
+      setError("Network or server error. Please try again.");
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignup = () => {
+    signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -121,8 +126,7 @@ export default function SignupPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-text-secondary">Password (min 8 chars)</label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -133,8 +137,7 @@ export default function SignupPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-text-secondary">Confirm Password</label>
-                <Input
-                  type="password"
+                <PasswordInput
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

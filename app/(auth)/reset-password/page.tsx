@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Lock, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -131,8 +132,7 @@ function ResetPasswordForm() {
 
             <div className="space-y-1">
               <label className="text-xs font-medium text-text-secondary">New Password</label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -146,8 +146,7 @@ function ResetPasswordForm() {
 
             <div className="space-y-1">
               <label className="text-xs font-medium text-text-secondary">Confirm New Password</label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
