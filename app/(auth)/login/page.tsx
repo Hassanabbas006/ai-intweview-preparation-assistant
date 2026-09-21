@@ -14,6 +14,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const resetSuccess = searchParams.get("reset") === "success";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const [email, setEmail] = useState("");
@@ -108,6 +109,12 @@ function LoginForm() {
             </div>
           )}
 
+          {resetSuccess && !requires2FA && (
+            <div className="mb-4 p-3 rounded-input bg-success/15 border border-success/30 text-success text-sm">
+              Password updated successfully! Please sign in with your new password.
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 rounded-input bg-error/15 border border-error/30 text-error text-sm">
               {error}
@@ -133,6 +140,12 @@ function LoginForm() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium text-text-secondary">Password</label>
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
                   </div>
                   <Input
                     type="password"

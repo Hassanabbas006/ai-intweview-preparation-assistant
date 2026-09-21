@@ -53,10 +53,11 @@ model User {
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
-  loginLogs        LoginLog[]
-  sessions         InterviewSession[]
-  resumes          Resume[]
-  atsScanLogs      AtsScanLog[]
+  loginLogs           LoginLog[]
+  sessions            InterviewSession[]
+  resumes             Resume[]
+  atsScanLogs         AtsScanLog[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -165,3 +166,19 @@ model AtsScanLog {
   @@index([resumeId])
   @@map("ats_scan_logs")
 }
+
+// Time-limited, single-use password reset tokens (only SHA-256 hash stored)
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
