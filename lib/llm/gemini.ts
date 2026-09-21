@@ -2,9 +2,9 @@ import { GoogleGenAI } from "@google/genai";
 import { LLMGenerateOptions, LLMMessage, LLMProvider, LLMStreamOptions } from "./types";
 
 const GEMINI_MODELS = [
-  "gemini-3.6-flash",
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
+  "gemini-3.5-flash-lite", // ~800ms - 1.3s response time (Ultra-fast real-time conversational streaming)
+  "gemini-3-flash-preview", // ~3.5s fallback
+  "gemini-3.5-flash", // ~9s fallback
   "gemini-flash-latest",
 ];
 
