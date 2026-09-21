@@ -102,6 +102,8 @@ model InterviewSession {
   type        InterviewType
   domain      String?
   focusArea   String?           @map("focus_area")
+  difficulty  String?           @default("INTERMEDIATE")
+  score       Float?
   modality    InterviewModality @default(TEXT)
   startedAt   DateTime          @default(now()) @map("started_at")
   completedAt DateTime?         @map("completed_at")
@@ -109,9 +111,24 @@ model InterviewSession {
 
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   report      InterviewReport?
+  messages    InterviewMessage[]
 
   @@index([userId])
   @@map("interview_sessions")
+}
+
+// Full conversation message turns for an interview session
+model InterviewMessage {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  role      String   // "user" | "assistant" | "system"
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session   InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("interview_messages")
 }
 
 // Evaluator report generated after an interview session
