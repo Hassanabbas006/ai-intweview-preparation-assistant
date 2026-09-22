@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DOMAIN_OPTIONS } from "@/lib/constants/domains";
+import { DOMAIN_OPTIONS, SOFTWARE_ENGINEERING_SUBFOCUS } from "@/lib/constants/domains";
 import {
   Briefcase,
   Users,
@@ -37,8 +37,8 @@ const TRACKS: TrackCardOption[] = [
   {
     type: "DOMAIN",
     title: "Technical / Domain Deep Dive",
-    subtitle: "Architecture, coding trade-offs, and systems",
-    description: "Rigorous technical discussion tailored to your engineering discipline with live follow-ups.",
+    subtitle: "Architecture, trade-offs, and domain depth",
+    description: "Rigorous technical discussion across Software Engineering, Data Science, Data Analytics, Cybersecurity, Finance, or Accounting with live follow-ups.",
     icon: BrainCircuit,
     tag: "Most Popular",
   },
@@ -80,7 +80,8 @@ export default function InterviewHubPage() {
   const { data: session } = useSession();
 
   const [selectedTrack, setSelectedTrack] = useState<"HR" | "DOMAIN" | "MANAGERIAL" | "APTITUDE">("DOMAIN");
-  const [selectedDomain, setSelectedDomain] = useState<string>("Fullstack");
+  const [selectedDomain, setSelectedDomain] = useState<string>("Software_Engineering");
+  const [softwareSubFocus, setSoftwareSubFocus] = useState<string>("Fullstack");
   const [focusArea, setFocusArea] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("INTERMEDIATE");
   const [loading, setLoading] = useState(false);
@@ -89,22 +90,55 @@ export default function InterviewHubPage() {
   // Sync domain preference from session
   useEffect(() => {
     if (session?.user?.domain) {
-      setSelectedDomain(session.user.domain);
+      if (
+        ["Frontend", "Backend", "Fullstack", "AI_ML", "DevOps", "Mobile"].includes(
+          session.user.domain
+        )
+      ) {
+        setSelectedDomain("Software_Engineering");
+        setSoftwareSubFocus(session.user.domain);
+      } else {
+        setSelectedDomain(session.user.domain);
+      }
     }
   }, [session?.user?.domain]);
+
+  const getFocusPlaceholder = () => {
+    switch (selectedDomain) {
+      case "Software_Engineering":
+        return "e.g. React Performance, PostgreSQL Indexing, Microservices Architecture, Kafka";
+      case "Data_Science":
+        return "e.g. Transformer Architectures, Feature Selection, PyTorch, Model Drift & Monitoring";
+      case "Data_Analytics":
+        return "e.g. SQL Window Functions, PowerBI/Tableau Dashboards, ETL Pipelines, Cohort Retention";
+      case "Cybersecurity":
+        return "e.g. OWASP Top 10, Zero Trust, Threat Modeling, IAM, Incident Response Playbooks";
+      case "Finance":
+        return "e.g. Discounted Cash Flow (DCF), LBO Modeling, Risk-Weighted Assets, Capital Allocation";
+      case "Accounting":
+        return "e.g. GAAP Revenue Recognition (ASC 606), SOX Internal Controls, Tax Depreciation, Auditing";
+      default:
+        return "e.g. Core concepts, recent project architectures, industry standards";
+    }
+  };
 
   const handleStartInterview = async () => {
     setError(null);
     setLoading(true);
 
     try {
+      const combinedFocus =
+        selectedTrack === "DOMAIN" && selectedDomain === "Software_Engineering"
+          ? [softwareSubFocus, focusArea.trim()].filter(Boolean).join(" - ")
+          : focusArea.trim() || null;
+
       const res = await fetch("/api/interview/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: selectedTrack,
           domain: selectedTrack === "DOMAIN" ? selectedDomain : null,
-          focusArea: selectedTrack === "DOMAIN" ? focusArea : null,
+          focusArea: selectedTrack === "DOMAIN" ? combinedFocus : null,
           difficulty,
           modality: "TEXT",
         }),
@@ -239,7 +273,7 @@ export default function InterviewHubPage() {
               {/* Domain selector (if DOMAIN track selected) */}
               {selectedTrack === "DOMAIN" ? (
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary">Engineering Discipline / Domain</label>
+                  <label className="text-xs font-semibold text-text-secondary">Career Discipline / Domain</label>
                   <select
                     value={selectedDomain}
                     onChange={(e) => setSelectedDomain(e.target.value)}
@@ -263,6 +297,26 @@ export default function InterviewHubPage() {
               )}
             </div>
 
+            {/* Software Engineering Sub-Focus Area */}
+            {selectedTrack === "DOMAIN" && selectedDomain === "Software_Engineering" && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-text-secondary">
+                  Software Engineering Sub-Track
+                </label>
+                <select
+                  value={softwareSubFocus}
+                  onChange={(e) => setSoftwareSubFocus(e.target.value)}
+                  className="w-full h-10 px-3 py-2 text-sm bg-surface text-text-primary border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary shadow-soft"
+                >
+                  {SOFTWARE_ENGINEERING_SUBFOCUS.map((sub) => (
+                    <option key={sub.value} value={sub.value}>
+                      {sub.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Custom Focus Area (for Domain track) */}
             {selectedTrack === "DOMAIN" && (
               <div className="space-y-2">
@@ -271,14 +325,14 @@ export default function InterviewHubPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. React Performance, PostgreSQL Indexing, Microservices Architecture, Kafka"
+                  placeholder={getFocusPlaceholder()}
                   value={focusArea}
                   onChange={(e) => setFocusArea(e.target.value)}
                   maxLength={100}
                   className="w-full h-10 px-3 py-2 text-sm bg-surface text-text-primary border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary shadow-soft"
                 />
                 <p className="text-[11px] text-text-secondary">
-                  The AI interviewer will adapt its questions and architectural scenarios to probe these specific technologies.
+                  The AI interviewer will adapt its questions and architectural scenarios to probe these specific domain topics.
                 </p>
               </div>
             )}

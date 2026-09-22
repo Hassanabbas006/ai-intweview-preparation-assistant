@@ -13,6 +13,7 @@ import { TypingIndicator } from "@/components/interview/typing-indicator";
 import { EndDialog } from "@/components/interview/end-dialog";
 import { AptitudeRoom } from "@/components/interview/aptitude-room";
 import { APTITUDE_QUESTION_BANK } from "@/lib/interview/aptitude-bank";
+import { getDomainLabel } from "@/lib/constants/domains";
 import {
   ArrowLeft,
   Sparkles,
@@ -287,7 +288,7 @@ export default function InterviewSessionPage() {
                     ? "HR & Behavioral Interview"
                     : session?.type === "MANAGERIAL"
                     ? "Managerial Leadership Interview"
-                    : `${session?.domain || "Fullstack"} Technical Deep Dive`}
+                    : `${getDomainLabel(session?.domain)} Deep Dive`}
                 </span>
                 <Badge variant={isCompleted ? "neutral" : "primary"} className="text-[10px]">
                   {isCompleted ? "Completed" : "In Progress"}

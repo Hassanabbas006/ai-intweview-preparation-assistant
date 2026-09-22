@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ShieldCheck, ShieldAlert, LogOut, ArrowRight, UserCheck, Briefcase, FileText, Code2 } from "lucide-react";
+import { getDomainLabel } from "@/lib/constants/domains";
 
 export default function UserDashboardPage() {
   const { data: session, status } = useSession();
@@ -67,7 +68,7 @@ export default function UserDashboardPage() {
                 <span className="text-text-secondary flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-primary" /> Target Track / Domain
                 </span>
-                <span className="font-medium text-text-primary">{user?.domain || "General"}</span>
+                <span className="font-medium text-text-primary">{getDomainLabel(user?.domain)}</span>
               </div>
               <div className="flex items-center justify-between py-2 text-sm">
                 <span className="text-text-secondary flex items-center gap-2">

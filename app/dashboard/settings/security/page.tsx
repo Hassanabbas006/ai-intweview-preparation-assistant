@@ -26,13 +26,13 @@ import {
   Briefcase,
   Save,
 } from "lucide-react";
-import { DOMAIN_OPTIONS } from "@/lib/constants/domains";
+import { DOMAIN_OPTIONS, getDomainLabel } from "@/lib/constants/domains";
 
 export default function SecuritySettingsPage() {
   const { data: session, update, status } = useSession();
 
   // Domain state
-  const [selectedDomain, setSelectedDomain] = useState<string>("Fullstack");
+  const [selectedDomain, setSelectedDomain] = useState<string>("Software_Engineering");
   const [domainLoading, setDomainLoading] = useState(false);
   const [domainSuccess, setDomainSuccess] = useState<string | null>(null);
   const [domainError, setDomainError] = useState<string | null>(null);
@@ -227,9 +227,7 @@ export default function SecuritySettingsPage() {
                 <Briefcase className="w-5 h-5 text-primary" /> Target Track / Career Domain
               </CardTitle>
               <Badge variant="neutral">
-                {DOMAIN_OPTIONS.find((d) => d.value === session?.user?.domain)?.label ||
-                  session?.user?.domain ||
-                  "Fullstack"}
+                {getDomainLabel(session?.user?.domain)}
               </Badge>
             </div>
             <CardDescription>

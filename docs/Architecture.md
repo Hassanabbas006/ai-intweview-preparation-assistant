@@ -7,7 +7,7 @@ Built using Google Antigravity (agentic AI IDE) — plan phase-by-phase via its 
 ## App flow
 
 ### User flow
-1. Sign up / log in (email+password or Google OAuth) → optional 2FA setup
+1. Sign up / log in (email+password or Google OAuth) → optional 2FA setup. Forgot password → request reset link by email → click link → set new password → log in.
 2. Land on dashboard
 3. **Resume path**: upload resume → choose job-targeted or general ATS scan → get score, skill gaps, and improvement suggestions
 4. **Interview path**: configure interview (type → domain/focus if applicable → modality) → conversational interview session → feedback report → learning recommendations
@@ -67,8 +67,9 @@ Suggested structure for a Next.js-based build:
 | Frontend | Next.js (React) + Tailwind CSS |
 | Backend | Node.js/Express or Next.js API routes; Python FastAPI microservice for resume parsing |
 | Database | PostgreSQL (via Prisma ORM) |
-| Session/cache | Redis (holds live interview conversation state) |
-| Auth | NextAuth.js or Firebase Auth; Google OAuth; TOTP 2FA via `speakeasy` |
+| Session/cache | PostgreSQL only for live interview state — deliberate simplification (single-session reads are fast enough at this scale, and it guarantees zero state loss on refresh/disconnect). Redis is not currently used; revisit only if concurrency or latency actually requires it. |
+| Auth | NextAuth.js or Firebase Auth; Google OAuth; TOTP 2FA via `speakeasy`; password reset via emailed link |
+| Email delivery | Resend (free tier) — password reset emails |
 | LLM | Provider-agnostic client. Free tier to start: Google Gemini API or Groq. Paid upgrade path: Claude API |
 | Interview response delivery | Streamed token-by-token (not sent all at once), with a typing indicator client-side while the AI responds |
 | Voice mode (later phase) | Browser-native Web Speech API — free, built-in speech-to-text and text-to-speech, no external voice service |
@@ -76,12 +77,13 @@ Suggested structure for a Next.js-based build:
 | Coding editor | Monaco Editor |
 | File storage | AWS S3 / Cloudinary (resumes) |
 | Learning recs | YouTube Data API v3 |
-| Hosting | Vercel (frontend) + Railway/Render (backend, Redis, Postgres) |
+| Hosting | Vercel (frontend) + Railway/Render (backend, Postgres) |
 
 ## Key database tables
 
 ```
 users              → id, email, password_hash, google_id, role, 2fa_enabled, domain, created_at
+password_reset_tokens → id, user_id, token_hash, expires_at, used (boolean)
 admins             → id, email, password_hash, 2fa_enabled (mandatory)
 login_logs         → user_id, timestamp, method, success/fail   (no IP)
 interview_sessions → id, user_id, type, domain, focus_area, modality, started_at, completed_at, status

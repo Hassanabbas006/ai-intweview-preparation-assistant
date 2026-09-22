@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine target career track
-    const effectiveDomain = type === "DOMAIN" ? domain || user.domain || "Fullstack" : null;
+    const effectiveDomain = type === "DOMAIN" ? domain || user.domain || "Software_Engineering" : null;
 
     // Create session in PostgreSQL
     const newSession = await prisma.interviewSession.create({

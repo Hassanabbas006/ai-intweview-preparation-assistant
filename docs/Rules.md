@@ -21,6 +21,7 @@ Guardrails for anyone (human or AI coding assistant) working on this codebase. U
 ## Avoid
 
 - **No IP address logging or tracking**, anywhere in the system — this was explicitly ruled out
+- **No automatic git pushes**: Never run `git push` unless explicitly instructed by the user, and only after a phase has been fully tested and approved by the user
 - No hardcoded secrets or API keys in source — environment variables only, never committed
 - No reusing the regular user session/login flow for admin — admin auth must stay a fully separate system
 - No resume formats accepted silently if they'll break ATS parsing (tables, images, multi-column layouts, headers/footers) — flag them to the user instead of failing silently

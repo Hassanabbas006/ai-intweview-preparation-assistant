@@ -17,7 +17,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [domain, setDomain] = useState("Fullstack");
+  const [domain, setDomain] = useState("Software_Engineering");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

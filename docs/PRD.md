@@ -27,14 +27,14 @@ The **mock interview is the core, non-negotiable feature** — it must feel like
 
 | Feature | Description |
 |---|---|
-| Auth | Email/password signup + login, "Continue with Google," TOTP-based 2FA (Google Authenticator compatible) |
+| Auth | Email/password signup + login, "Continue with Google," TOTP-based 2FA (Google Authenticator compatible), forgot-password / reset-password flow via emailed reset link |
 | Resume upload & parsing | PDF/DOCX upload, structured extraction (skills, experience, education) |
 | ATS scoring | Two modes: job-targeted (score against a specific JD) or general (no JD, general ATS health score) |
 | Skill gap analysis | Identifies gaps between resume and target role (or general best practices) |
 | Resume improvement suggestions | Missing keywords, formatting/parsability fixes, stronger phrasing rewrites, structural gaps — for both ATS modes |
 | Interview question generator | Generates tailored questions from a pasted/uploaded job description |
-| Mock interview simulator | Conversational, AI-led interview across 4 types: HR/Behavioral, Aptitude, Managerial, Domain-based (cybersecurity, data science, finance, accounting, data analytics, etc.). Candidate can ask the AI questions mid-interview. Chat-style UI with streaming replies (text appears word-by-word) and a typing indicator while the AI responds — a single free-text input handles both answers and candidate questions, no separate modes. Text mode first; voice-to-voice mode later using the browser's built-in speech-to-text and text-to-speech. |
-| AI feedback & report | Post-interview evaluation with scores, strengths, weaknesses, and improvement tips — rubric varies by interview type |
+| Mock interview simulator | Conversational, AI-led interview across 4 types: HR/Behavioral, Aptitude, Managerial, Domain-based (cybersecurity, data science, finance, accounting, data analytics, etc.). Candidate can ask the AI questions mid-interview. Chat-style UI with streaming replies (text appears word-by-word) and a typing indicator while the AI responds — a single free-text input handles both answers and candidate questions, no separate modes. Text mode first; voice-to-voice mode later using the browser's built-in speech-to-text and text-to-speech. Questions must vary across sessions for the same candidate — no repeating the same opening questions or, for Aptitude, the same fixed question set every attempt. |
+| AI feedback & report | Post-interview evaluation with scores, strengths, weaknesses, and improvement tips — rubric varies by interview type. For voice-mode sessions, also includes a Speech Delivery score: response time per question and filler-word/hesitation detection from the transcript and pause timing (not full voice-tone/prosody analysis — that would need a paid service and is out of scope for now). |
 | Learning recommender | YouTube video recommendations mapped to identified skill gaps |
 | Coding arena | LeetCode-style code editor with an automated judge, for technical/DS tracks |
 | Admin dashboard | Separate admin login (own session scope, mandatory 2FA), user management (role/ban), and activity analytics: logins, interviews taken, ATS scans run. No IP address logging. |
