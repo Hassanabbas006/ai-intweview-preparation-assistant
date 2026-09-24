@@ -9,10 +9,19 @@ import {
 } from "@/lib/auth/admin-session";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
-const VerifyAdmin2FASchema = z.object({
-  challengeToken: z.string().min(1, "Challenge token is required."),
-  code: z.string().regex(/^\d{6}$/, "Must be a 6-digit authentication code."),
-});
+const VerifyAdmin2FASchema = z
+  .object({
+    challengeToken: z.string().min(1, "Challenge token is required."),
+    totpCode: z.string().optional(),
+    code: z.string().optional(),
+  })
+  .transform((data) => ({
+    challengeToken: data.challengeToken,
+    code: (data.totpCode || data.code || "").trim(),
+  }))
+  .refine((data) => /^\d{6}$/.test(data.code), {
+    message: "Must be a 6-digit authentication code.",
+  });
 
 export async function POST(req: NextRequest) {
   try {

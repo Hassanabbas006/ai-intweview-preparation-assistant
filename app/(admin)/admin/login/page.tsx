@@ -66,6 +66,7 @@ export default function AdminLoginPage() {
         body: JSON.stringify({
           challengeToken,
           totpCode,
+          code: totpCode,
         }),
       });
 
