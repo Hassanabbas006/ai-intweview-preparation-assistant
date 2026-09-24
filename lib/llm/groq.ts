@@ -64,8 +64,8 @@ export class GroqProvider implements LLMProvider {
         const completionPromise = this.client.chat.completions.create({
           model,
           messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxOutputTokens,
+          temperature: options.temperature ?? 0.5,
+          max_tokens: options.maxOutputTokens ?? 200,
         });
 
         const completion = await Promise.race([completionPromise, timeoutPromise]);
@@ -117,8 +117,8 @@ export class GroqProvider implements LLMProvider {
         const streamPromise = this.client.chat.completions.create({
           model,
           messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxOutputTokens,
+          temperature: options.temperature ?? 0.5,
+          max_tokens: options.maxOutputTokens ?? 200,
           stream: true,
         });
 

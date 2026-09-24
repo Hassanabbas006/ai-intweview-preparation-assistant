@@ -105,7 +105,8 @@ export async function POST(
             await llm.streamText({
               messages: [{ role: "user", content: openingInstruction }],
               systemInstruction: systemPrompt,
-              temperature: 0.7,
+              temperature: 0.5,
+              maxOutputTokens: 200,
               onMeta(meta) {
                 activeProvider = meta.provider;
                 activeModel = meta.model;
@@ -237,7 +238,8 @@ export async function POST(
           await llm.streamText({
             messages: historyMessages,
             systemInstruction: systemPrompt,
-            temperature: 0.7,
+            temperature: 0.5,
+            maxOutputTokens: 200,
             onMeta(meta) {
               activeProvider = meta.provider;
               activeModel = meta.model;

@@ -8,9 +8,10 @@ interface ChatBubbleProps {
   role: "assistant" | "user" | "system";
   content: string;
   isStreaming?: boolean;
+  interviewerName?: string;
 }
 
-export function ChatBubble({ role, content, isStreaming }: ChatBubbleProps) {
+export function ChatBubble({ role, content, isStreaming, interviewerName }: ChatBubbleProps) {
   const isAI = role === "assistant";
 
   return (
@@ -41,7 +42,11 @@ export function ChatBubble({ role, content, isStreaming }: ChatBubbleProps) {
       >
         <div className="flex items-center justify-between gap-4 mb-2 pb-1 border-b border-border/40">
           <span className="text-[11px] font-semibold text-text-secondary">
-            {isAI ? "AI Interviewer" : "You (Candidate)"}
+            {isAI
+              ? interviewerName
+                ? `${interviewerName} (Interviewer)`
+                : "Interviewer"
+              : "You (Candidate)"}
           </span>
           {isStreaming && (
             <span className="inline-flex items-center gap-1 text-[10px] font-mono text-primary animate-pulse">

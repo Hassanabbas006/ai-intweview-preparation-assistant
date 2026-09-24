@@ -8,7 +8,7 @@ export class MockLLMProvider implements LLMProvider {
       .reverse()
       .find((m) => m.role === "user")?.content || "";
 
-    return `Thank you for sharing that. You mentioned: "${lastUserMessage.slice(0, 50)}...". Let's dive deeper into how you measure the performance and scalability of your solution in a production environment.`;
+    return `Got it. Looking at your approach with "${lastUserMessage.slice(0, 40)}...", how would you handle failure recovery and latency when this scales under high concurrency?`;
   }
 
   async streamText(options: LLMStreamOptions): Promise<string> {

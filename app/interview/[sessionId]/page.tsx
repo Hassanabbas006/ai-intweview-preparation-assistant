@@ -13,6 +13,7 @@ import { TypingIndicator } from "@/components/interview/typing-indicator";
 import { EndDialog } from "@/components/interview/end-dialog";
 import { AptitudeRoom } from "@/components/interview/aptitude-room";
 import { APTITUDE_QUESTION_BANK } from "@/lib/interview/aptitude-bank";
+import { getPersonaForInterview } from "@/lib/interview/personas";
 import { getDomainLabel } from "@/lib/constants/domains";
 import {
   ArrowLeft,
@@ -146,7 +147,7 @@ export default function InterviewSessionPage() {
       }
     } catch (err: any) {
       console.error("[Opening Stream Failure]:", err);
-      setError("AI Interviewer connection interrupted. Please refresh to start.");
+      setError("Interviewer connection interrupted. Please refresh to start.");
       setIsStreaming(false);
       setIsWaitingForFirstToken(false);
     }
@@ -279,7 +280,7 @@ export default function InterviewSessionPage() {
       }
     } catch (err: any) {
       console.error("[Streaming Failure]:", err);
-      setError("Connection to AI interviewer interrupted. Please retry sending your response.");
+      setError("Connection to interviewer interrupted. Please retry sending your response.");
       setIsStreaming(false);
       setIsWaitingForFirstToken(false);
     }
@@ -356,6 +357,9 @@ export default function InterviewSessionPage() {
   }
 
   const isCompleted = session?.status === "COMPLETED";
+  const persona = session
+    ? getPersonaForInterview(session.type, session.difficulty || "INTERMEDIATE")
+    : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text-primary transition-colors">
@@ -455,6 +459,7 @@ export default function InterviewSessionPage() {
               key={msg.id}
               role={msg.role}
               content={msg.content}
+              interviewerName={persona?.name}
             />
           ))}
 
@@ -464,6 +469,7 @@ export default function InterviewSessionPage() {
               role="assistant"
               content={streamingText}
               isStreaming={true}
+              interviewerName={persona?.name}
             />
           )}
 
@@ -490,7 +496,7 @@ export default function InterviewSessionPage() {
               disabled={isStreaming}
               placeholder={
                 isStreaming
-                  ? "AI interviewer is responding..."
+                  ? "Interviewer is responding..."
                   : "Type your answer or ask a clarifying question..."
               }
             />

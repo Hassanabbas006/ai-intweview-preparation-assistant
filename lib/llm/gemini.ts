@@ -73,8 +73,8 @@ export class GeminiProvider implements LLMProvider {
           contents,
           config: {
             systemInstruction,
-            temperature: options.temperature ?? 0.7,
-            maxOutputTokens: options.maxOutputTokens,
+            temperature: options.temperature ?? 0.5,
+            maxOutputTokens: options.maxOutputTokens ?? 200,
           },
         });
 
@@ -130,8 +130,8 @@ export class GeminiProvider implements LLMProvider {
           contents,
           config: {
             systemInstruction,
-            temperature: options.temperature ?? 0.7,
-            maxOutputTokens: options.maxOutputTokens,
+            temperature: options.temperature ?? 0.5,
+            maxOutputTokens: options.maxOutputTokens ?? 200,
           },
         });
 
