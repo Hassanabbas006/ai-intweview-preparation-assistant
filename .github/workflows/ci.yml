@@ -10,6 +10,13 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test?schema=public"
+      DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/test?schema=public"
+      NEXTAUTH_SECRET: "ci_dummy_secret_for_build_testing_only_32_chars_min"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ADMIN_SEED_PASSWORD: "CiAdminSeedPassword123!"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,6 +41,4 @@ jobs:
 
       - name: Next.js Build
         run: npm run build
-        env:
-          NEXTAUTH_SECRET: ci_dummy_secret_for_build_testing_only
-          NEXTAUTH_URL: http://localhost:3000
+
