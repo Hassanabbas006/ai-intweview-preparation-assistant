@@ -12,6 +12,14 @@ export interface LLMGenerateOptions {
 
 export interface LLMStreamOptions extends LLMGenerateOptions {
   onChunk: (chunk: string) => void;
+  onMeta?: (meta: { provider: string; model: string }) => void;
+}
+
+export interface LLMResponseResult {
+  text: string;
+  provider: string;
+  model: string;
+  latencyMs: number;
 }
 
 export interface LLMProvider {

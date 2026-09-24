@@ -3,8 +3,6 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
-import { getLLMProvider } from "@/lib/llm";
-import { buildOpeningPrompt, buildSystemPrompt } from "@/lib/interview/prompts";
 import { getAptitudeQuestions } from "@/lib/interview/aptitude-bank";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { InterviewType, InterviewModality } from "@prisma/client";
@@ -55,7 +53,7 @@ export async function POST(req: NextRequest) {
     // Determine target career track
     const effectiveDomain = type === "DOMAIN" ? domain || user.domain || "Software_Engineering" : null;
 
-    // Create session in PostgreSQL
+    // Create session in PostgreSQL (< 20ms)
     const newSession = await prisma.interviewSession.create({
       data: {
         userId: user.id,
@@ -79,46 +77,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Conversational Track (HR, Domain, Managerial): Generate opening question from LLM
-    const systemPrompt = buildSystemPrompt({
-      type: type as InterviewType,
-      domain: effectiveDomain,
-      focusArea,
-      difficulty,
-    });
-
-    const openingInstruction = buildOpeningPrompt({
-      type: type as InterviewType,
-      domain: effectiveDomain,
-      focusArea,
-      difficulty,
-    });
-
-    const llm = getLLMProvider();
-    const openingQuestion = await llm.generateText({
-      messages: [{ role: "user", content: openingInstruction }],
-      systemInstruction: systemPrompt,
-      temperature: 0.7,
-    });
-
-    // Save initial assistant message to DB
-    const firstMessage = await prisma.interviewMessage.create({
-      data: {
-        sessionId: newSession.id,
-        role: "assistant",
-        content: openingQuestion,
-      },
-    });
-
+    // Return session immediately (<30ms) so the room mounts instantly.
+    // The opening question will stream live in real time upon room mount!
     return successResponse(
       {
         sessionId: newSession.id,
         session: newSession,
-        initialMessage: firstMessage,
       },
-      "Interview session started successfully."
+      "Interview session initialized successfully."
     );
   } catch (err) {
     return errorResponse("Failed to start interview session.", 500, err);
   }
 }
+

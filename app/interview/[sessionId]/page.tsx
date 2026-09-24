@@ -54,6 +54,7 @@ export default function InterviewSessionPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [isWaitingForFirstToken, setIsWaitingForFirstToken] = useState(false);
+  const [llmMeta, setLlmMeta] = useState<{ provider: string; model: string } | null>(null);
 
   // Elapsed timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -63,33 +64,127 @@ export default function InterviewSessionPage() {
   const [isEndingSession, setIsEndingSession] = useState(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasTriggeredOpeningRef = useRef(false);
 
-  // Load session data
+  // Auto-scroll helper
+  const scrollToBottom = React.useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior, block: "end" });
+    }
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Auto-scroll whenever messages change or tokens stream in
   useEffect(() => {
-    async function fetchSession() {
-      try {
-        const res = await fetch(`/api/interview/${sessionId}`);
-        const data = await res.json();
+    scrollToBottom(isStreaming ? "auto" : "smooth");
+  }, [messages, streamingText, isWaitingForFirstToken, isStreaming, scrollToBottom]);
+  const triggerOpeningStream = React.useCallback(async (targetSessionId: string) => {
+    if (hasTriggeredOpeningRef.current) return;
+    hasTriggeredOpeningRef.current = true;
 
-        if (!res.ok || data.error) {
-          setError(data.message || "Failed to load interview session.");
-          setLoading(false);
-          return;
-        }
+    setIsWaitingForFirstToken(true);
+    setIsStreaming(true);
+    setStreamingText("");
 
-        setSession(data.data.session);
-        setMessages(data.data.session.messages || []);
-        setLoading(false);
-      } catch {
-        setError("Network error while loading session.");
-        setLoading(false);
+    try {
+      const response = await fetch(`/api/interview/${targetSessionId}/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isOpening: true }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to initiate opening interview stream.");
       }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let currentAccumulated = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const rawChunk = decoder.decode(value, { stream: true });
+        const lines = rawChunk.split("\n\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === "meta") {
+                setLlmMeta({ provider: data.provider, model: data.model });
+              } else if (data.type === "token" && data.content) {
+                setIsWaitingForFirstToken(false);
+                currentAccumulated += data.content;
+                setStreamingText(currentAccumulated);
+              } else if (data.type === "done") {
+                const openingMsg: MessageItem = {
+                  id: data.messageId || `msg_opening_${Date.now()}`,
+                  role: "assistant",
+                  content: currentAccumulated.trim(),
+                  createdAt: new Date().toISOString(),
+                };
+                setMessages([openingMsg]);
+                setStreamingText("");
+                setIsStreaming(false);
+                setIsWaitingForFirstToken(false);
+              } else if (data.type === "error") {
+                setError(data.message || "Failed to stream opening question.");
+                setIsStreaming(false);
+                setIsWaitingForFirstToken(false);
+              }
+            } catch {
+              // Ignore non-JSON chunk lines
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error("[Opening Stream Failure]:", err);
+      setError("AI Interviewer connection interrupted. Please refresh to start.");
+      setIsStreaming(false);
+      setIsWaitingForFirstToken(false);
+    }
+  }, []);
+
+  // Load session data and initiate opening question stream in parallel (Zero-waterfall startup)
+  useEffect(() => {
+    async function initRoom() {
+      if (!sessionId) return;
+
+      // Concurrently fire session metadata retrieval and opening question stream
+      const sessionFetchPromise = fetch(`/api/interview/${sessionId}`)
+        .then((res) => res.json())
+        .catch(() => ({ error: true, message: "Network error while loading session." }));
+
+      // Kick off opening stream immediately in parallel
+      triggerOpeningStream(sessionId);
+
+      const data = await sessionFetchPromise;
+
+      if (data.error) {
+        setError(data.message || "Failed to load interview session.");
+        setLoading(false);
+        return;
+      }
+
+      const sessionData = data.data?.session as SessionData;
+      if (sessionData) {
+        setSession(sessionData);
+        if (sessionData.messages && sessionData.messages.length > 0) {
+          setMessages((prev) => (prev.length === 0 ? sessionData.messages : prev));
+        }
+      }
+      setLoading(false);
     }
 
-    if (sessionId) {
-      fetchSession();
-    }
-  }, [sessionId]);
+    initRoom();
+  }, [sessionId, triggerOpeningStream]);
 
   // Elapsed session timer
   useEffect(() => {
@@ -101,13 +196,6 @@ export default function InterviewSessionPage() {
 
     return () => clearInterval(interval);
   }, [session]);
-
-  // Auto-scroll to bottom of chat
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages, streamingText, isWaitingForFirstToken]);
 
   const formatElapsed = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);
@@ -161,7 +249,9 @@ export default function InterviewSessionPage() {
             try {
               const data = JSON.parse(line.slice(6));
 
-              if (data.type === "token" && data.content) {
+              if (data.type === "meta") {
+                setLlmMeta({ provider: data.provider, model: data.model });
+              } else if (data.type === "token" && data.content) {
                 setIsWaitingForFirstToken(false);
                 currentAccumulated += data.content;
                 setStreamingText(currentAccumulated);
@@ -302,7 +392,25 @@ export default function InterviewSessionPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Live Model Telemetry Badge (Visible only in development/local testing mode to preserve interview immersion for candidates) */}
+            {process.env.NODE_ENV !== "production" && llmMeta && (
+              <div
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-mono text-primary shadow-soft animate-fade-in"
+                title={`[Dev Mode Telemetry] Inference Engine: ${llmMeta.provider.toUpperCase()} (${llmMeta.model})`}
+              >
+                <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+                <span className="font-semibold">
+                  {llmMeta.provider === "groq" ? "Groq" : "Gemini"}:
+                </span>
+                <span className="opacity-90">
+                  {llmMeta.model
+                    .replace("openai/", "")
+                    .replace("gemini-", "")}
+                </span>
+              </div>
+            )}
+
             {/* Live Session Timer */}
             {!isCompleted && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-input bg-background border border-border text-xs font-mono text-text-secondary">
@@ -369,6 +477,9 @@ export default function InterviewSessionPage() {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Auto-scroll bottom anchor */}
+          <div ref={messagesEndRef} className="h-2 shrink-0" />
         </div>
 
         {/* Bottom Input Bar */}
