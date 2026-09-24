@@ -9,6 +9,8 @@ import {
 } from "@/lib/auth/admin-session";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 const VerifyAdmin2FASchema = z
   .object({
     challengeToken: z.string().min(1, "Challenge token is required."),

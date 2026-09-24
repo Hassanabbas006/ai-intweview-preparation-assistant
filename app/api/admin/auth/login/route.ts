@@ -5,6 +5,8 @@ import { verifyPassword } from "@/lib/auth/password";
 import { createAdminChallengeToken } from "@/lib/auth/admin-session";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 const AdminLoginSchema = z.object({
   email: z.string().email("Please provide a valid admin email."),
   password: z.string().min(1, "Password is required."),
