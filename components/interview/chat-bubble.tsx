@@ -17,7 +17,7 @@ export function ChatBubble({ role, content, isStreaming, interviewerName }: Chat
   return (
     <div
       className={cn(
-        "flex items-start gap-3 max-w-[92%] sm:max-w-[85%]",
+        "flex items-start gap-2.5 sm:gap-3 max-w-[96%] xs:max-w-[92%] sm:max-w-[85%]",
         isAI ? "self-start" : "self-end flex-row-reverse"
       )}
     >
@@ -38,7 +38,7 @@ export function ChatBubble({ role, content, isStreaming, interviewerName }: Chat
 
       <div
         className={cn(
-          "p-4 rounded-2xl shadow-soft text-sm transition-colors overflow-hidden",
+          "p-3.5 sm:p-4 rounded-2xl shadow-soft text-sm transition-colors overflow-hidden max-w-full",
           isAI
             ? "rounded-tl-sm bg-primary/10 border border-primary/20 text-text-primary"
             : "rounded-tr-sm bg-surface border border-border text-text-primary"

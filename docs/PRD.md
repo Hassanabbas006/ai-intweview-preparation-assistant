@@ -44,3 +44,4 @@ The **mock interview is the core, non-negotiable feature** — it must feel like
 1. **Mock interview quality** — this cannot be a compromise. It must feel like a real, adaptive conversation, not a static question list. This includes the interaction itself feeling alive: streaming responses, a typing indicator, and free-text input for both answers and candidate questions.
 2. **No IP address logging** anywhere in the system.
 3. Admin login must be a genuinely separate system from regular user login, not just a role flag on the same flow.
+4. **The entire app must work properly on both desktop and mobile/phone screens** — not desktop-only with mobile as an afterthought. See design.md's Responsive design section for specifics.

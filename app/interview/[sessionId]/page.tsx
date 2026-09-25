@@ -362,48 +362,47 @@ export default function InterviewSessionPage() {
     : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text-primary transition-colors">
+    <div className="h-[100dvh] max-h-[100dvh] flex flex-col bg-background text-text-primary transition-colors overflow-hidden">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md px-4 sm:px-8 py-3.5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <header className="shrink-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md px-3.5 sm:px-8 py-2.5 sm:py-3.5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link
               href="/interview"
-              className="text-text-secondary hover:text-primary transition-colors p-1.5 rounded-input hover:bg-background"
+              className="text-text-secondary hover:text-primary transition-colors p-1.5 rounded-input hover:bg-background min-w-[36px] min-h-[36px] flex items-center justify-center shrink-0"
               title="Return to Interview Setup"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-heading font-bold text-sm text-text-primary">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-heading font-bold text-xs sm:text-sm text-text-primary truncate max-w-[150px] xs:max-w-[220px] sm:max-w-none">
                   {session?.type === "HR"
-                    ? "HR & Behavioral Interview"
+                    ? "HR & Behavioral"
                     : session?.type === "MANAGERIAL"
-                    ? "Managerial Leadership Interview"
+                    ? "Managerial Leadership"
                     : `${getDomainLabel(session?.domain)} Deep Dive`}
                 </span>
-                <Badge variant={isCompleted ? "neutral" : "primary"} className="text-[10px]">
-                  {isCompleted ? "Completed" : "In Progress"}
+                <Badge variant={isCompleted ? "neutral" : "primary"} className="text-[9px] sm:text-[10px] px-1.5 py-0 shrink-0">
+                  {isCompleted ? "Ended" : "Live"}
                 </Badge>
               </div>
               {session?.focusArea && (
-                <p className="text-[11px] text-text-secondary mt-0.5 truncate max-w-xs sm:max-w-md">
+                <p className="text-[10px] sm:text-[11px] text-text-secondary mt-0.5 truncate max-w-[140px] xs:max-w-[200px] sm:max-w-md">
                   Focus: {session.focusArea}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* Live Model Telemetry Badge (Visible only in development/local testing mode to preserve interview immersion for candidates) */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Live Model Telemetry Badge (Visible only in development/local testing mode) */}
             {process.env.NODE_ENV !== "production" && llmMeta && (
               <div
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-mono text-primary shadow-soft animate-fade-in"
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-mono text-primary shadow-soft animate-fade-in"
                 title={`[Dev Mode Telemetry] Inference Engine: ${llmMeta.provider.toUpperCase()} (${llmMeta.model})`}
               >
-                <Sparkles className="w-3 h-3 text-primary animate-pulse" />
                 <span className="font-semibold">
                   {llmMeta.provider === "groq" ? "Groq" : "Gemini"}:
                 </span>
@@ -417,8 +416,8 @@ export default function InterviewSessionPage() {
 
             {/* Live Session Timer */}
             {!isCompleted && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-input bg-background border border-border text-xs font-mono text-text-secondary">
-                <Clock className="w-3.5 h-3.5 text-warning" />
+              <div className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-input bg-background border border-border text-[11px] sm:text-xs font-mono text-text-secondary">
+                <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-warning shrink-0" />
                 <span>{formatElapsed(elapsedSeconds)}</span>
               </div>
             )}
@@ -431,14 +430,14 @@ export default function InterviewSessionPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowEndDialog(true)}
-                className="text-xs text-error border-error/30 hover:bg-error/10 flex items-center gap-1.5"
+                className="text-xs text-error border-error/30 hover:bg-error/10 flex items-center gap-1 h-8 sm:h-9 px-2 sm:px-3 min-w-[36px]"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">End Round</span>
               </Button>
             ) : (
               <Link href="/dashboard">
-                <Button size="sm" className="text-xs">
+                <Button size="sm" className="text-xs h-8 sm:h-9">
                   Dashboard
                 </Button>
               </Link>
@@ -448,11 +447,11 @@ export default function InterviewSessionPage() {
       </header>
 
       {/* Main Conversation Body */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 flex flex-col justify-between">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-4 py-3 sm:py-6 flex flex-col justify-between overflow-hidden min-h-0">
         {/* Chat Stream History Container */}
         <div
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto space-y-5 pb-6 pr-1 custom-scrollbar min-h-[50vh]"
+          className="flex-1 overflow-y-auto space-y-4 sm:space-y-5 pb-4 sm:pb-6 pr-1 custom-scrollbar min-h-0"
         >
           {messages.map((msg) => (
             <ChatBubble
@@ -489,7 +488,7 @@ export default function InterviewSessionPage() {
         </div>
 
         {/* Bottom Input Bar */}
-        <div className="sticky bottom-4 pt-2">
+        <div className="shrink-0 pt-2 pb-2 sm:pb-3 z-20 w-full">
           {!isCompleted ? (
             <ChatInput
               onSendMessage={handleSendMessage}

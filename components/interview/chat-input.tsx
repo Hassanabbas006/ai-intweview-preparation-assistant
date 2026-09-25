@@ -58,10 +58,10 @@ export function ChatInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full resize-none bg-transparent px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none disabled:opacity-50 min-h-[44px] max-h-[200px]"
+        className="w-full resize-none bg-transparent px-3 py-2 text-base sm:text-sm text-text-primary placeholder:text-text-secondary/70 focus:outline-none disabled:opacity-50 min-h-[48px] max-h-[200px]"
       />
 
-      <div className="flex items-center justify-between pt-1 px-2 border-t border-border/40">
+      <div className="flex items-center justify-between pt-1.5 px-2 border-t border-border/40">
         <span className="text-[11px] text-text-secondary hidden sm:inline-flex items-center gap-1">
           <kbd className="px-1.5 py-0.5 rounded bg-background border border-border font-mono text-[10px]">
             Enter
@@ -78,7 +78,7 @@ export function ChatInput({
           onClick={() => handleSubmit()}
           disabled={!text.trim() || disabled}
           size="sm"
-          className="ml-auto flex items-center gap-1.5 px-3 h-8 text-xs font-medium"
+          className="ml-auto flex items-center justify-center gap-1.5 px-4 h-9 sm:h-8 text-xs font-semibold rounded-input min-w-[44px]"
         >
           <span>Send</span>
           <Send className="w-3.5 h-3.5" />

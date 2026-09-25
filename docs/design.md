@@ -71,3 +71,14 @@ Both Manrope and Inter are free on Google Fonts.
 ## Theming implementation note
 
 Since both light and dark mode are required, define all colors as CSS variables (or Tailwind theme tokens) rather than hardcoding hex values in components, so the toggle is a single class/attribute switch rather than a per-component rewrite.
+
+## Responsive design (desktop + mobile)
+
+The whole app must work properly on both desktop and phone screens — not just desktop with mobile as an afterthought.
+
+- **Breakpoints**: design mobile-first with standard Tailwind breakpoints (sm: 640px, md: 768px, lg: 1024px) — layouts should stack/simplify below `md`, not just shrink and become unusable.
+- **Interview chat screen**: on mobile, the chat input must stay usable when the on-screen keyboard opens (input pinned above the keyboard, not hidden behind it), chat bubbles should use most of the screen width, and the header (track badge, timer, End Round) should compress to fit without wrapping awkwardly.
+- **Touch targets**: buttons, icons (like the password show/hide toggle), and links need to be comfortably tappable (minimum ~44px touch target), not sized for mouse precision only.
+- **Tables** (admin dashboard, resume/ATS history): must not force horizontal scrolling of the whole page — either scroll within a contained box, or collapse to a stacked card layout on small screens.
+- **Coding arena**: the code editor is the hardest part to make work well on mobile — at minimum it must not break the page layout; a "best used on desktop" note for this specific feature is acceptable if full mobile code-editing isn't practical, but the rest of the app must not have that excuse.
+- **Forms** (login, signup, settings): single-column, full-width inputs on mobile, no fixed pixel widths that overflow small screens.
