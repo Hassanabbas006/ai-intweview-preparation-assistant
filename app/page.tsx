@@ -84,20 +84,22 @@ export default function Home() {
 
         {/* Feature Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-          <Card className="hover:border-primary/40 transition-colors shadow-soft">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2 rounded-input bg-primary/10 text-primary w-fit">
-                  <Briefcase className="w-5 h-5" />
+          <Link href="/interview" className="block group">
+            <Card className="h-full hover:border-primary transition-all shadow-soft group-hover:shadow-md">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="p-2 rounded-input bg-primary/10 text-primary w-fit group-hover:bg-primary group-hover:text-white transition-colors">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <Badge variant="success">Available Now</Badge>
                 </div>
-                <Badge variant="neutral">Coming Soon</Badge>
-              </div>
-              <CardTitle className="text-lg mt-3">Adaptive Mock Interviews</CardTitle>
-              <CardDescription>
-                Simulate real technical and behavioral interviews with token-by-token streaming, contextual follow-ups, and tailored rubrics.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+                <CardTitle className="text-lg mt-3 group-hover:text-primary transition-colors">Adaptive Mock Interviews</CardTitle>
+                <CardDescription>
+                  Simulate real technical and behavioral interviews with token-by-token streaming, contextual follow-ups, and tailored rubrics.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
 
           <Card className="hover:border-primary/40 transition-colors shadow-soft">
             <CardHeader>

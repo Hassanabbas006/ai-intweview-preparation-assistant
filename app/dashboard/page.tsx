@@ -126,7 +126,7 @@ export default function UserDashboardPage() {
                   <CardTitle className="text-base flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-primary" /> Mock Interview Engine
                   </CardTitle>
-                  <Badge variant="neutral">Coming Soon</Badge>
+                  <Badge variant="success">Available Now</Badge>
                 </div>
                 <CardDescription>
                   Interactive AI-led technical & behavioral interviews with real-time feedback.
@@ -134,7 +134,7 @@ export default function UserDashboardPage() {
               </CardHeader>
               <CardFooter className="pt-2">
                 <Link href="/interview" className="w-full">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
+                  <Button variant="primary" size="sm" className="w-full text-xs shadow-soft">
                     Open Interview Hub
                   </Button>
                 </Link>
