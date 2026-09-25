@@ -259,7 +259,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background transition-colors">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 pt-14 sm:pt-4 bg-background transition-colors">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
