@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -210,12 +210,6 @@ export default function AdminLoginPage() {
               </form>
             )}
           </CardContent>
-
-          <CardFooter className="pt-3 border-t border-border flex justify-center text-xs text-text-secondary">
-            <span className="flex items-center gap-1 text-[11px]">
-              <Lock className="w-3 h-3 text-warning" /> 8-Hour Scoped Session &bull; Zero IP Logging
-            </span>
-          </CardFooter>
         </Card>
       </div>
     </div>
