@@ -4,14 +4,17 @@ import {
   LLMMessage,
   LLMProvider,
   LLMStreamOptions,
+  extractLLMErrorMessage,
 } from "./types";
 
 const GROQ_MODELS = [
-  "openai/gpt-oss-120b", // Primary high-capability conversational model on Groq
-  "openai/gpt-oss-20b", // Ultra-fast low-latency fallback model on Groq
+  "openai/gpt-oss-120b",
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "openai/gpt-oss-20b",
 ];
 
-const MODEL_TIMEOUT_MS = 3500; // Fail-fast threshold: 3.5 seconds per model attempt
+const MODEL_TIMEOUT_MS = 10000; // 10s timeout per model attempt
 
 export class GroqProvider implements LLMProvider {
   name = "groq";
@@ -34,7 +37,10 @@ export class GroqProvider implements LLMProvider {
       formatted.push({ role: "system", content: systemInstruction });
     }
 
-    for (const msg of messages) {
+    // Retain last 20 messages to prevent context window overflow in long interviews
+    const recentMessages = messages.length > 20 ? messages.slice(-20) : messages;
+
+    for (const msg of recentMessages) {
       formatted.push({ role: msg.role, content: msg.content });
     }
 
@@ -47,6 +53,7 @@ export class GroqProvider implements LLMProvider {
       options.systemInstruction
     );
     let lastError: any = null;
+    const errorsList: string[] = [];
     const startTime = Date.now();
 
     for (const model of GROQ_MODELS) {
@@ -83,15 +90,16 @@ export class GroqProvider implements LLMProvider {
       } catch (err: any) {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         lastError = err;
+        const msg = extractLLMErrorMessage(err);
+        errorsList.push(`${model}: ${msg}`);
         console.warn(
-          `[LLM:Groq Fallback] Model ${model} failed (${err?.message || err}), failing fast to next model.`
+          `[LLM:Groq Fallback] Model ${model} failed: ${msg}. Trying next fallback model.`
         );
       }
     }
 
-    throw new Error(
-      `Groq generation failed across all models: ${lastError?.message || "Unknown error"}`
-    );
+    const detailedError = errorsList.length > 0 ? errorsList.join(" | ") : extractLLMErrorMessage(lastError);
+    throw new Error(`Groq generation failed across all models: ${detailedError}`);
   }
 
   async streamText(options: LLMStreamOptions): Promise<string> {
@@ -100,6 +108,7 @@ export class GroqProvider implements LLMProvider {
       options.systemInstruction
     );
     let lastError: any = null;
+    const errorsList: string[] = [];
     const startTime = Date.now();
 
     for (const model of GROQ_MODELS) {
@@ -168,14 +177,15 @@ export class GroqProvider implements LLMProvider {
       } catch (err: any) {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         lastError = err;
+        const msg = extractLLMErrorMessage(err);
+        errorsList.push(`${model}: ${msg}`);
         console.warn(
-          `[LLM:Groq Stream Fallback] Model ${model} failed (${err?.message || err}), failing fast to next model.`
+          `[LLM:Groq Stream Fallback] Model ${model} failed: ${msg}. Trying next fallback model.`
         );
       }
     }
 
-    throw new Error(
-      `Groq streaming failed across all models: ${lastError?.message || "Unknown error"}`
-    );
+    const detailedError = errorsList.length > 0 ? errorsList.join(" | ") : extractLLMErrorMessage(lastError);
+    throw new Error(`Groq streaming failed across all models: ${detailedError}`);
   }
 }

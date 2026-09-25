@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
-import { getLLMProvider, LLMMessage } from "@/lib/llm";
+import { getLLMProvider, LLMMessage, extractLLMErrorMessage } from "@/lib/llm";
 import { buildOpeningPrompt, buildSystemPrompt } from "@/lib/interview/prompts";
 
 export const runtime = "nodejs";
@@ -172,12 +172,11 @@ export async function POST(
 
             controller.close();
           } catch (err: any) {
-            console.error("[Opening Streaming Error]:", err);
+            const detailedMsg = extractLLMErrorMessage(err);
+            console.error("[Opening Streaming Error Details]:", detailedMsg, err);
             const errorPayload = `data: ${JSON.stringify({
               type: "error",
-              message:
-                err?.message ||
-                "Failed to generate opening question. Please refresh or retry.",
+              message: detailedMsg || "Failed to generate opening question. Please refresh or retry.",
             })}\n\n`;
             controller.enqueue(encoder.encode(errorPayload));
             controller.close();
@@ -304,12 +303,11 @@ export async function POST(
 
           controller.close();
         } catch (err: any) {
-          console.error("[Interview Streaming Error]:", err);
+          const detailedMsg = extractLLMErrorMessage(err);
+          console.error("[Interview Streaming Error Details]:", detailedMsg, err);
           const errorPayload = `data: ${JSON.stringify({
             type: "error",
-            message:
-              err?.message ||
-              "An error occurred while generating the AI response. Please try sending your answer again.",
+            message: detailedMsg || "An error occurred while generating the response. Please try sending your answer again.",
           })}\n\n`;
           controller.enqueue(encoder.encode(errorPayload));
           controller.close();

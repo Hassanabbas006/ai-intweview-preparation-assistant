@@ -1,14 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
-import { LLMGenerateOptions, LLMMessage, LLMProvider, LLMStreamOptions } from "./types";
+import {
+  LLMGenerateOptions,
+  LLMMessage,
+  LLMProvider,
+  LLMStreamOptions,
+  extractLLMErrorMessage,
+} from "./types";
 
 const GEMINI_MODELS = [
-  "gemini-3.5-flash-lite", // ~800ms - 1.3s response time (Ultra-fast real-time conversational streaming)
-  "gemini-3-flash-preview", // ~3.5s fallback
-  "gemini-3.5-flash", // ~9s fallback
+  "gemini-3.5-flash-lite", // ~800ms - 1.3s response time
+  "gemini-3-flash-preview",
+  "gemini-3.5-flash",
   "gemini-flash-latest",
 ];
 
-const MODEL_TIMEOUT_MS = 3500; // Fail-fast threshold: 3.5 seconds per model attempt
+const MODEL_TIMEOUT_MS = 10000; // 10s timeout per model attempt
 
 export class GeminiProvider implements LLMProvider {
   name = "gemini";
@@ -25,7 +31,10 @@ export class GeminiProvider implements LLMProvider {
     const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
     let extractedSystem = "";
 
-    for (const msg of messages) {
+    // Retain last 20 messages to prevent context window bloat in long interviews
+    const recentMessages = messages.length > 20 ? messages.slice(-20) : messages;
+
+    for (const msg of recentMessages) {
       if (msg.role === "system") {
         extractedSystem += (extractedSystem ? "\n\n" : "") + msg.content;
       } else {
@@ -54,6 +63,7 @@ export class GeminiProvider implements LLMProvider {
       : extractedSystem || undefined;
 
     let lastError: any = null;
+    const errorsList: string[] = [];
     const startTime = Date.now();
 
     for (const model of GEMINI_MODELS) {
@@ -93,15 +103,16 @@ export class GeminiProvider implements LLMProvider {
       } catch (err: any) {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         lastError = err;
+        const msg = extractLLMErrorMessage(err);
+        errorsList.push(`${model}: ${msg}`);
         console.warn(
-          `[LLM:Gemini Fallback] Model ${model} failed (${err?.message || err}), failing fast to next model.`
+          `[LLM:Gemini Fallback] Model ${model} failed: ${msg}. Trying next fallback model.`
         );
       }
     }
 
-    throw new Error(
-      `Gemini generation failed across all fallback models: ${lastError?.message || "Unknown error"}`
-    );
+    const detailedError = errorsList.length > 0 ? errorsList.join(" | ") : extractLLMErrorMessage(lastError);
+    throw new Error(`Gemini generation failed across all fallback models: ${detailedError}`);
   }
 
   async streamText(options: LLMStreamOptions): Promise<string> {
@@ -111,6 +122,7 @@ export class GeminiProvider implements LLMProvider {
       : extractedSystem || undefined;
 
     let lastError: any = null;
+    const errorsList: string[] = [];
     const startTime = Date.now();
 
     for (const model of GEMINI_MODELS) {
@@ -179,14 +191,15 @@ export class GeminiProvider implements LLMProvider {
       } catch (err: any) {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         lastError = err;
+        const msg = extractLLMErrorMessage(err);
+        errorsList.push(`${model}: ${msg}`);
         console.warn(
-          `[LLM:Gemini Stream Fallback] Model ${model} failed (${err?.message || err}), failing fast to next model.`
+          `[LLM:Gemini Stream Fallback] Model ${model} failed: ${msg}. Trying next fallback model.`
         );
       }
     }
 
-    throw new Error(
-      `Gemini streaming failed across all fallback models: ${lastError?.message || "Unknown error"}`
-    );
+    const detailedError = errorsList.length > 0 ? errorsList.join(" | ") : extractLLMErrorMessage(lastError);
+    throw new Error(`Gemini streaming failed across all fallback models: ${detailedError}`);
   }
 }

@@ -27,3 +27,17 @@ export interface LLMProvider {
   generateText(options: LLMGenerateOptions): Promise<string>;
   streamText(options: LLMStreamOptions): Promise<string>;
 }
+
+export function extractLLMErrorMessage(err: any): string {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (err.error?.message) return String(err.error.message);
+  if (err.message) return String(err.message);
+  if (err.statusText) return `HTTP ${err.status}: ${err.statusText}`;
+  if (err.status) return `HTTP Error ${err.status}`;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}

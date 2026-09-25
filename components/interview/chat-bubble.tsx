@@ -1,7 +1,7 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Sparkles, User } from "lucide-react";
+import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatBubbleProps {
@@ -29,7 +29,11 @@ export function ChatBubble({ role, content, isStreaming, interviewerName }: Chat
             : "bg-surface border border-border text-text-primary"
         )}
       >
-        {isAI ? <Sparkles className="w-4 h-4" /> : <User className="w-4 h-4" />}
+        {isAI ? (
+          <span className="font-heading font-bold text-xs tracking-tight select-none">AI</span>
+        ) : (
+          <User className="w-4 h-4" />
+        )}
       </div>
 
       <div
