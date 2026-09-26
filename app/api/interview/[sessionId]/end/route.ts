@@ -4,10 +4,13 @@ import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
+  const t0 = Date.now();
   try {
     const session = await getServerSession(authOptions);
 
@@ -41,11 +44,16 @@ export async function POST(
       },
     });
 
+    const elapsedMs = Date.now() - t0;
+    console.log(`[API Timing: End Session] Completed session ${sessionId} in ${elapsedMs}ms`);
+
     return successResponse(
-      { session: updated },
+      { session: updated, timingMs: elapsedMs },
       "Interview session has ended successfully."
     );
   } catch (err) {
+    const elapsedMs = Date.now() - t0;
+    console.error(`[API Timing: End Session Error] Failed after ${elapsedMs}ms:`, err);
     return errorResponse("Failed to complete interview session.", 500, err);
   }
 }

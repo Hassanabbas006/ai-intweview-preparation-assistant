@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [domain, setDomain] = useState("Software_Engineering");
   const [loading, setLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,6 +37,8 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+    const t0 = performance.now();
+    console.log("[Client Timing: Signup] Submitting registration form...");
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -45,22 +48,30 @@ export default function SignupPage() {
       });
 
       const data = await res.json();
+      const elapsed = Math.round(performance.now() - t0);
 
       if (!res.ok || data.error) {
+        console.warn(`[Client Timing: Signup] Registration failed in ${elapsed}ms:`, data?.message);
         setError(data.message || "Registration failed. Please try again.");
         setLoading(false);
         return;
       }
 
+      console.log(`[Client Timing: Signup] Registration successful in ${elapsed}ms. Redirecting to login.`);
       // Registration successful -> redirect to login with registered flag
       router.push("/login?registered=true");
-    } catch {
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - t0);
+      console.error(`[Client Timing: Signup] Network error in ${elapsed}ms:`, err);
       setError("Network or server error. Please try again.");
       setLoading(false);
     }
   };
 
   const handleGoogleSignup = () => {
+    const t0 = performance.now();
+    console.log("[Client Timing: Google Signup] Initiating Google registration redirect...");
+    setIsGoogleLoading(true);
     signIn("google", { callbackUrl: "/dashboard" });
   };
 
@@ -146,8 +157,13 @@ export default function SignupPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating account..." : "Sign Up"}
+              <Button
+                type="submit"
+                className="w-full"
+                isLoading={loading}
+                loadingText="Creating Account..."
+              >
+                Sign Up
               </Button>
             </form>
 
@@ -164,7 +180,9 @@ export default function SignupPage() {
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center gap-2"
-              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              onClick={handleGoogleSignup}
+              isLoading={isGoogleLoading}
+              loadingText="Connecting to Google..."
               disabled={loading}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">

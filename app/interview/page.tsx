@@ -123,6 +123,8 @@ export default function InterviewHubPage() {
   };
 
   const handleStartInterview = async () => {
+    const t0 = performance.now();
+    console.log("[Client Timing: Start Interview] Button clicked, initializing session...");
     setError(null);
     setLoading(true);
 
@@ -144,6 +146,9 @@ export default function InterviewHubPage() {
         }),
       });
 
+      const tFetch = performance.now();
+      console.log(`[Client Timing: Start Interview] /api/interview/start responded in ${(tFetch - t0).toFixed(1)}ms`);
+
       const data = await res.json();
 
       if (!res.ok || data.error) {
@@ -152,9 +157,11 @@ export default function InterviewHubPage() {
         return;
       }
 
+      console.log(`[Client Timing: Start Interview] Navigating to /interview/${data.data.sessionId}`);
       // Navigate to active interview room
       router.push(`/interview/${data.data.sessionId}`);
-    } catch {
+    } catch (err) {
+      console.error(`[Client Timing: Start Interview] Failed after ${(performance.now() - t0).toFixed(1)}ms:`, err);
       setError("Network or server error while starting interview.");
       setLoading(false);
     }
@@ -346,17 +353,12 @@ export default function InterviewHubPage() {
 
             <Button
               onClick={handleStartInterview}
-              disabled={loading}
+              isLoading={loading}
+              loadingText="Initializing Interview Room..."
               size="lg"
               className="w-full sm:w-auto flex items-center gap-2 shadow-soft font-semibold"
             >
-              {loading ? (
-                <>Initializing Interview Room...</>
-              ) : (
-                <>
-                  Start Interview Session <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              Start Interview Session <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </CardFooter>
         </Card>

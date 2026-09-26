@@ -48,9 +48,10 @@ export function EndDialog({
             variant="destructive"
             size="sm"
             onClick={onConfirm}
-            disabled={isEnding}
+            isLoading={isEnding}
+            loadingText="Concluding..."
           >
-            {isEnding ? "Concluding..." : "End Interview"}
+            End Interview
           </Button>
         </div>
       </div>

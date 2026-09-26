@@ -15,7 +15,10 @@ const StartInterviewSchema = z.object({
   modality: z.enum(["TEXT", "VOICE"]).default("TEXT"),
 });
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
+  const t0 = performance.now();
   try {
     const session = await getServerSession(authOptions);
 
@@ -65,6 +68,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const elapsed = (performance.now() - t0).toFixed(1);
+    console.log(`[API Timing: Start Session] Created session ${newSession.id} in ${elapsed}ms`);
+
     if (type === "APTITUDE") {
       const questions = getAptitudeQuestions();
       return successResponse(
@@ -87,6 +93,7 @@ export async function POST(req: NextRequest) {
       "Interview session initialized successfully."
     );
   } catch (err) {
+    console.error(`[API Timing: Start Session] Error after ${(performance.now() - t0).toFixed(1)}ms:`, err);
     return errorResponse("Failed to start interview session.", 500, err);
   }
 }

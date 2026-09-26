@@ -10,7 +10,10 @@ const RegisterSchema = z.object({
   domain: z.string().optional(),
 });
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
+  const t0 = performance.now();
   try {
     const body = await req.json();
     const validation = RegisterSchema.safeParse(body);
@@ -62,8 +65,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    console.log(`[API Timing: Register] User registered in ${(performance.now() - t0).toFixed(1)}ms`);
     return successResponse(newUser, "Account created successfully. Please sign in.", 201);
   } catch (err) {
+    console.error(`[API Timing: Register] Error after ${(performance.now() - t0).toFixed(1)}ms:`, err);
     return errorResponse("An error occurred during registration. Please try again.", 500, err);
   }
 }

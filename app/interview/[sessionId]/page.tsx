@@ -22,6 +22,7 @@ import {
   LogOut,
   AlertCircle,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 interface MessageItem {
@@ -288,24 +289,48 @@ export default function InterviewSessionPage() {
 
   // End interview session
   const handleEndInterview = async () => {
+    const t0 = performance.now();
+    console.log(`[Client Timing: End Interview] User confirmed end interview for session ${sessionId}...`);
     setIsEndingSession(true);
+    setShowEndDialog(false);
+
     try {
       const res = await fetch(`/api/interview/${sessionId}/end`, {
         method: "POST",
       });
       const data = await res.json();
+      const elapsed = Math.round(performance.now() - t0);
 
       if (res.ok) {
-        setShowEndDialog(false);
+        console.log(`[Client Timing: End Interview] Session concluded on backend in ${elapsed}ms. Redirecting to dashboard...`);
         setSession((prev) => (prev ? { ...prev, status: "COMPLETED" } : null));
         router.push("/dashboard");
+      } else {
+        console.error(`[Client Timing: End Interview] Failed after ${elapsed}ms:`, data?.message);
+        setIsEndingSession(false);
       }
     } catch (err) {
-      console.error("Failed to end session:", err);
-    } finally {
+      const elapsed = Math.round(performance.now() - t0);
+      console.error(`[Client Timing: End Interview] Network error after ${elapsed}ms:`, err);
       setIsEndingSession(false);
     }
   };
+
+  if (isEndingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background animate-fade-in">
+        <div className="max-w-md w-full p-8 rounded-2xl bg-surface border border-border text-center space-y-4 shadow-soft">
+          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+          <h2 className="text-lg font-bold font-heading text-text-primary">Concluding Interview Round</h2>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Archiving your conversation transcript and synchronizing your candidate dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

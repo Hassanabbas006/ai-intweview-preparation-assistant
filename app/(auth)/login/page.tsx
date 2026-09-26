@@ -23,12 +23,15 @@ function LoginForm() {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [requires2FA, setRequires2FA] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const t0 = performance.now();
+    console.log(`[Client Timing: Login] Submitting ${requires2FA ? "2FA code" : "credentials"}...`);
 
     try {
       // Pre-flight check: verify credentials & check if 2FA code is needed
@@ -43,12 +46,16 @@ function LoginForm() {
       });
 
       const checkData = await checkRes.json();
+      const tPreflight = Math.round(performance.now() - t0);
 
       if (!checkRes.ok || checkData.error) {
+        console.warn(`[Client Timing: Login] Pre-flight failed in ${tPreflight}ms:`, checkData?.message);
         setError(checkData.message || "Invalid credentials.");
         setLoading(false);
         return;
       }
+
+      console.log(`[Client Timing: Login] Pre-flight passed in ${tPreflight}ms.`);
 
       // If user has 2FA enabled and code is not yet provided:
       if (checkData.data?.requires2FA) {
@@ -67,19 +74,32 @@ function LoginForm() {
         callbackUrl,
       });
 
+      const tTotal = Math.round(performance.now() - t0);
+
       if (!result || result.error) {
+        console.error(`[Client Timing: Login] NextAuth session creation failed in ${tTotal}ms:`, result?.error);
         setError("Authentication session creation failed. Please try again.");
         setLoading(false);
         return;
       }
 
+      console.log(`[Client Timing: Login] Authentication successful in ${tTotal}ms. Redirecting...`);
       // Successful sign in
       router.push(callbackUrl);
       router.refresh();
-    } catch {
+    } catch (err) {
+      const tTotal = Math.round(performance.now() - t0);
+      console.error(`[Client Timing: Login] Network error in ${tTotal}ms:`, err);
       setError("Network or authentication error. Please try again.");
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    const t0 = performance.now();
+    console.log("[Client Timing: Google Auth] Initiating Google sign-in redirect...");
+    setIsGoogleLoading(true);
+    signIn("google", { callbackUrl });
   };
 
   return (
@@ -188,12 +208,13 @@ function LoginForm() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading
-                ? "Signing in..."
-                : requires2FA
-                ? "Verify Code & Sign In"
-                : "Sign In"}
+            <Button
+              type="submit"
+              className="w-full"
+              isLoading={loading}
+              loadingText={requires2FA ? "Verifying Code..." : "Signing In..."}
+            >
+              {requires2FA ? "Verify Code & Sign In" : "Sign In"}
             </Button>
           </form>
 
@@ -212,7 +233,9 @@ function LoginForm() {
                 type="button"
                 variant="outline"
                 className="w-full flex items-center justify-center gap-2"
-                onClick={() => signIn("google", { callbackUrl })}
+                onClick={handleGoogleSignIn}
+                isLoading={isGoogleLoading}
+                loadingText="Connecting to Google..."
                 disabled={loading}
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">

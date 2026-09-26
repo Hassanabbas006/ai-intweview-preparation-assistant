@@ -28,6 +28,8 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const t0 = performance.now();
+    console.log("[Client Timing: Admin Login] Submitting admin credentials...");
 
     try {
       const res = await fetch("/api/admin/auth/login", {
@@ -37,17 +39,22 @@ export default function AdminLoginPage() {
       });
 
       const data = await res.json();
+      const elapsed = Math.round(performance.now() - t0);
 
       if (!res.ok || data.error) {
+        console.warn(`[Client Timing: Admin Login] Credentials failed in ${elapsed}ms:`, data?.message);
         setError(data.message || "Invalid administrative credentials.");
         setLoading(false);
         return;
       }
 
+      console.log(`[Client Timing: Admin Login] Credentials verified in ${elapsed}ms. Challenge token received.`);
       setChallengeToken(data.data.challengeToken);
       setStep("totp");
       setLoading(false);
-    } catch {
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - t0);
+      console.error(`[Client Timing: Admin Login] Network error in ${elapsed}ms:`, err);
       setError("A network error occurred while reaching the admin authentication service.");
       setLoading(false);
     }
@@ -58,6 +65,8 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const t0 = performance.now();
+    console.log("[Client Timing: Admin 2FA] Submitting TOTP verification code...");
 
     try {
       const res = await fetch("/api/admin/auth/verify-2fa", {
@@ -71,17 +80,22 @@ export default function AdminLoginPage() {
       });
 
       const data = await res.json();
+      const elapsed = Math.round(performance.now() - t0);
 
       if (!res.ok || data.error) {
+        console.warn(`[Client Timing: Admin 2FA] Verification failed in ${elapsed}ms:`, data?.message);
         setError(data.message || "Invalid 2FA authentication code.");
         setLoading(false);
         return;
       }
 
+      console.log(`[Client Timing: Admin 2FA] 2FA verified in ${elapsed}ms. Entering privileged dashboard.`);
       // Successful verification -> redirect to privileged admin dashboard
       router.push("/admin/dashboard");
       router.refresh();
-    } catch {
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - t0);
+      console.error(`[Client Timing: Admin 2FA] Network error in ${elapsed}ms:`, err);
       setError("A network error occurred during TOTP verification.");
       setLoading(false);
     }
@@ -157,8 +171,13 @@ export default function AdminLoginPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Verifying credentials..." : "Continue to 2FA Verification"}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  isLoading={loading}
+                  loadingText="Verifying credentials..."
+                >
+                  Continue to 2FA Verification
                 </Button>
               </form>
             ) : (
@@ -203,8 +222,13 @@ export default function AdminLoginPage() {
                   >
                     Back
                   </Button>
-                  <Button type="submit" className="w-2/3" disabled={loading}>
-                    {loading ? "Authorizing..." : "Authorize Session"}
+                  <Button
+                    type="submit"
+                    className="w-2/3"
+                    isLoading={loading}
+                    loadingText="Authorizing..."
+                  >
+                    Authorize Session
                   </Button>
                 </div>
               </form>
