@@ -92,6 +92,9 @@ export default function InterviewSessionPage() {
     setIsStreaming(true);
     setStreamingText("");
 
+    let currentAccumulated = "";
+    let messageCommitted = false;
+
     try {
       const response = await fetch(`/api/interview/${targetSessionId}/stream`, {
         method: "POST",
@@ -105,53 +108,69 @@ export default function InterviewSessionPage() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let currentAccumulated = "";
+      let buffer = "";
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const rawChunk = decoder.decode(value, { stream: true });
-        const lines = rawChunk.split("\n\n");
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data: ")) continue;
 
-              if (data.type === "meta") {
-                setLlmMeta({ provider: data.provider, model: data.model });
-              } else if (data.type === "token" && data.content) {
-                setIsWaitingForFirstToken(false);
-                currentAccumulated += data.content;
-                setStreamingText(currentAccumulated);
-              } else if (data.type === "done") {
-                const openingMsg: MessageItem = {
-                  id: data.messageId || `msg_opening_${Date.now()}`,
-                  role: "assistant",
-                  content: currentAccumulated.trim(),
-                  createdAt: new Date().toISOString(),
-                };
-                setMessages([openingMsg]);
-                setStreamingText("");
-                setIsStreaming(false);
-                setIsWaitingForFirstToken(false);
-              } else if (data.type === "error") {
-                setError(data.message || "Failed to stream opening question.");
-                setIsStreaming(false);
-                setIsWaitingForFirstToken(false);
-              }
-            } catch {
-              // Ignore non-JSON chunk lines
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === "meta") {
+              setLlmMeta({ provider: data.provider, model: data.model });
+            } else if (data.type === "token" && data.content) {
+              setIsWaitingForFirstToken(false);
+              currentAccumulated += data.content;
+              setStreamingText(currentAccumulated);
+            } else if (data.type === "done") {
+              messageCommitted = true;
+              const openingMsg: MessageItem = {
+                id: data.messageId || `msg_opening_${Date.now()}`,
+                role: "assistant",
+                content: currentAccumulated.trim(),
+                createdAt: new Date().toISOString(),
+              };
+              setMessages([openingMsg]);
+              setStreamingText("");
+              setIsStreaming(false);
+              setIsWaitingForFirstToken(false);
+            } else if (data.type === "error") {
+              setError(data.message || "Failed to stream opening question.");
+              setIsStreaming(false);
+              setIsWaitingForFirstToken(false);
             }
+          } catch {
+            // Ignore non-JSON or partial chunk lines
           }
         }
+      }
+
+      // Fallback in case stream completed without explicit done event
+      if (!messageCommitted && currentAccumulated.trim()) {
+        const openingMsg: MessageItem = {
+          id: `msg_opening_${Date.now()}`,
+          role: "assistant",
+          content: currentAccumulated.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        setMessages([openingMsg]);
       }
     } catch (err: any) {
       console.error("[Opening Stream Failure]:", err);
       setError("Interviewer connection interrupted. Please refresh to start.");
+    } finally {
       setIsStreaming(false);
       setIsWaitingForFirstToken(false);
+      setStreamingText("");
     }
   }, []);
 
@@ -235,6 +254,9 @@ export default function InterviewSessionPage() {
     setIsStreaming(true);
     setStreamingText("");
 
+    let currentAccumulated = "";
+    let messageCommitted = false;
+
     try {
       const response = await fetch(`/api/interview/${sessionId}/stream`, {
         method: "POST",
@@ -248,53 +270,69 @@ export default function InterviewSessionPage() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let currentAccumulated = "";
+      let buffer = "";
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const rawChunk = decoder.decode(value, { stream: true });
-        const lines = rawChunk.split("\n\n");
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data: ")) continue;
 
-              if (data.type === "meta") {
-                setLlmMeta({ provider: data.provider, model: data.model });
-              } else if (data.type === "token" && data.content) {
-                setIsWaitingForFirstToken(false);
-                currentAccumulated += data.content;
-                setStreamingText(currentAccumulated);
-              } else if (data.type === "done") {
-                const finalAssistantMsg: MessageItem = {
-                  id: data.messageId || `msg_${Date.now()}`,
-                  role: "assistant",
-                  content: currentAccumulated.trim(),
-                  createdAt: new Date().toISOString(),
-                };
-                setMessages((prev) => [...prev, finalAssistantMsg]);
-                setStreamingText("");
-                setIsStreaming(false);
-                setIsWaitingForFirstToken(false);
-              } else if (data.type === "error") {
-                setError(data.message || "An error occurred during response generation.");
-                setIsStreaming(false);
-                setIsWaitingForFirstToken(false);
-              }
-            } catch {
-              // Ignore non-JSON or partial chunk lines
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === "meta") {
+              setLlmMeta({ provider: data.provider, model: data.model });
+            } else if (data.type === "token" && data.content) {
+              setIsWaitingForFirstToken(false);
+              currentAccumulated += data.content;
+              setStreamingText(currentAccumulated);
+            } else if (data.type === "done") {
+              messageCommitted = true;
+              const finalAssistantMsg: MessageItem = {
+                id: data.messageId || `msg_${Date.now()}`,
+                role: "assistant",
+                content: currentAccumulated.trim(),
+                createdAt: new Date().toISOString(),
+              };
+              setMessages((prev) => [...prev, finalAssistantMsg]);
+              setStreamingText("");
+              setIsStreaming(false);
+              setIsWaitingForFirstToken(false);
+            } else if (data.type === "error") {
+              setError(data.message || "An error occurred during response generation.");
+              setIsStreaming(false);
+              setIsWaitingForFirstToken(false);
             }
+          } catch {
+            // Ignore non-JSON or partial chunk lines
           }
         }
+      }
+
+      // Fallback in case stream completed without explicit done event
+      if (!messageCommitted && currentAccumulated.trim()) {
+        const finalAssistantMsg: MessageItem = {
+          id: `msg_${Date.now()}`,
+          role: "assistant",
+          content: currentAccumulated.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, finalAssistantMsg]);
       }
     } catch (err: any) {
       console.error("[Streaming Failure]:", err);
       setError("Connection to interviewer interrupted. Please retry sending your response.");
+    } finally {
       setIsStreaming(false);
       setIsWaitingForFirstToken(false);
+      setStreamingText("");
     }
   };
 

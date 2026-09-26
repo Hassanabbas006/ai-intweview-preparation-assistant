@@ -28,6 +28,15 @@ export function ChatInput({
     }
   }, [text]);
 
+  // Auto-focus textarea when re-enabled after interviewer finishes streaming
+  const prevDisabledRef = useRef(disabled);
+  useEffect(() => {
+    if (prevDisabledRef.current && !disabled) {
+      textareaRef.current?.focus();
+    }
+    prevDisabledRef.current = disabled;
+  }, [disabled]);
+
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!text.trim() || disabled) return;
