@@ -42,19 +42,36 @@ export default function SecuritySettingsPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [token, setToken] = useState("");
+  const [hasPassword, setHasPassword] = useState<boolean | null>(
+    session?.user?.hasPassword !== undefined ? session.user.hasPassword : null
+  );
   const [disablePassword, setDisablePassword] = useState("");
+  const [disableTotpCode, setDisableTotpCode] = useState("");
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Sync domain from session once loaded
+  // Sync domain and check 2FA security status
   useEffect(() => {
     if (session?.user?.domain) {
       setSelectedDomain(session.user.domain);
     }
-  }, [session?.user?.domain]);
+    if (session?.user?.hasPassword !== undefined) {
+      setHasPassword(session.user.hasPassword);
+    }
+
+    // Fetch live security status to ensure accuracy
+    fetch("/api/auth/2fa/disable")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.data && typeof data.data.hasPassword === "boolean") {
+          setHasPassword(data.data.hasPassword);
+        }
+      })
+      .catch(() => {});
+  }, [session?.user?.domain, session?.user?.hasPassword]);
 
   if (status === "loading") {
     return (
@@ -168,10 +185,15 @@ export default function SecuritySettingsPage() {
     setLoading(true);
 
     try {
+      const payload =
+        hasPassword === false
+          ? { code: disableTotpCode.trim() }
+          : { password: disablePassword };
+
       const res = await fetch("/api/auth/2fa/disable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: disablePassword }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -185,6 +207,7 @@ export default function SecuritySettingsPage() {
 
       setShowDisableConfirm(false);
       setDisablePassword("");
+      setDisableTotpCode("");
       setSetupStep("idle");
       setSuccessMessage("Two-factor authentication has been disabled.");
       setLoading(false);
@@ -414,7 +437,9 @@ export default function SecuritySettingsPage() {
                       2FA is actively protecting your account
                     </p>
                     <p className="text-xs text-text-secondary leading-relaxed">
-                      Every time you log in with your password, you will be prompted for a 6-digit TOTP verification code.
+                      {hasPassword === false
+                        ? "Your Google-authenticated account is protected with 2FA verification."
+                        : "Every time you log in with your password, you will be prompted for a 6-digit TOTP verification code."}
                     </p>
                   </div>
                 </div>
@@ -430,24 +455,56 @@ export default function SecuritySettingsPage() {
                 ) : (
                   <form
                     onSubmit={handleDisable2FA}
-                    className="p-4 border border-border rounded-card space-y-3 bg-surface"
+                    className="p-4 border border-border rounded-card space-y-4 bg-surface"
                   >
-                    <p className="text-xs font-medium text-text-primary">
-                      Confirm password to disable 2FA:
-                    </p>
-                    <PasswordInput
-                      placeholder="Your account password"
-                      value={disablePassword}
-                      onChange={(e) => setDisablePassword(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                    <div className="flex gap-2 justify-end">
+                    {hasPassword === false ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-text-primary">
+                          Confirm with Authenticator to disable 2FA:
+                        </p>
+                        <p className="text-[11px] text-text-secondary leading-relaxed">
+                          Since your account was created with Google, enter your current 6-digit code from your authenticator app to disable 2FA.
+                        </p>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          placeholder="123456"
+                          value={disableTotpCode}
+                          onChange={(e) => setDisableTotpCode(e.target.value)}
+                          className="text-center tracking-widest text-lg font-mono"
+                          required
+                          disabled={loading}
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-text-primary">
+                          Confirm password to disable 2FA:
+                        </p>
+                        <PasswordInput
+                          placeholder="Your account password"
+                          value={disablePassword}
+                          onChange={(e) => setDisablePassword(e.target.value)}
+                          required
+                          disabled={loading}
+                          autoFocus
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 justify-end pt-1">
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setShowDisableConfirm(false)}
+                        onClick={() => {
+                          setShowDisableConfirm(false);
+                          setDisablePassword("");
+                          setDisableTotpCode("");
+                        }}
                         disabled={loading}
                       >
                         Cancel
@@ -456,9 +513,10 @@ export default function SecuritySettingsPage() {
                         type="submit"
                         variant="destructive"
                         size="sm"
-                        disabled={loading}
+                        isLoading={loading}
+                        loadingText="Disabling..."
                       >
-                        {loading ? "Disabling..." : "Confirm & Disable"}
+                        Confirm & Disable
                       </Button>
                     </div>
                   </form>

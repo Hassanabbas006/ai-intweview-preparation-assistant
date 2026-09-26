@@ -84,6 +84,7 @@ export const authOptions: AuthOptions = {
           role: user.role,
           domain: user.domain,
           twoFactorEnabled: user.twoFactorEnabled,
+          hasPassword: true,
         };
       },
     }),
@@ -116,6 +117,7 @@ export const authOptions: AuthOptions = {
           user.role = existingUser.role;
           user.domain = existingUser.domain;
           user.twoFactorEnabled = existingUser.twoFactorEnabled;
+          user.hasPassword = !!existingUser.passwordHash;
 
           if (!existingUser.googleId) {
             await prisma.user.update({
@@ -136,6 +138,7 @@ export const authOptions: AuthOptions = {
           user.role = newUser.role;
           user.domain = newUser.domain;
           user.twoFactorEnabled = newUser.twoFactorEnabled;
+          user.hasPassword = false;
         }
 
         // Record Google OAuth login audit log (STRICT RULE: NO IP ADDRESS LOGGING)
@@ -156,12 +159,27 @@ export const authOptions: AuthOptions = {
         token.role = user.role || "USER";
         token.domain = user.domain || null;
         token.twoFactorEnabled = user.twoFactorEnabled || false;
+        token.hasPassword = user.hasPassword !== undefined ? user.hasPassword : false;
+      }
+
+      // If token.hasPassword was uninitialized in older sessions, query database
+      if (token.hasPassword === undefined && token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { passwordHash: true },
+          });
+          token.hasPassword = !!dbUser?.passwordHash;
+        } catch {
+          token.hasPassword = false;
+        }
       }
 
       // Handle session updates (e.g. enabling/disabling 2FA or updating domain)
       if (trigger === "update" && session) {
         if (session.domain !== undefined) token.domain = session.domain;
         if (session.twoFactorEnabled !== undefined) token.twoFactorEnabled = session.twoFactorEnabled;
+        if (session.hasPassword !== undefined) token.hasPassword = session.hasPassword;
       }
 
       return token;
@@ -172,6 +190,7 @@ export const authOptions: AuthOptions = {
         session.user.role = token.role;
         session.user.domain = token.domain;
         session.user.twoFactorEnabled = token.twoFactorEnabled;
+        session.user.hasPassword = token.hasPassword ?? false;
       }
       return session;
     },

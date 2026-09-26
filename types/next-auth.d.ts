@@ -7,6 +7,7 @@ declare module "next-auth" {
       role: string;
       domain?: string | null;
       twoFactorEnabled: boolean;
+      hasPassword?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     role: string;
     domain?: string | null;
     twoFactorEnabled: boolean;
+    hasPassword?: boolean;
   }
 }
 
@@ -24,5 +26,6 @@ declare module "next-auth/jwt" {
     role: string;
     domain?: string | null;
     twoFactorEnabled: boolean;
+    hasPassword?: boolean;
   }
 }
