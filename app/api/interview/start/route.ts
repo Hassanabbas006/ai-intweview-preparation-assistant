@@ -3,14 +3,14 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
-import { getAptitudeQuestions } from "@/lib/interview/aptitude-bank";
+import { selectAptitudeQuestions } from "@/lib/interview/aptitude-bank";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { InterviewType, InterviewModality } from "@prisma/client";
 
 const StartInterviewSchema = z.object({
   type: z.enum(["HR", "DOMAIN", "MANAGERIAL", "APTITUDE"] as const),
   domain: z.string().optional().nullable(),
-  focusArea: z.string().max(100).optional().nullable(),
+  focusArea: z.string().max(300).optional().nullable(),
   difficulty: z.enum(["JUNIOR", "INTERMEDIATE", "SENIOR", "LEAD"]).default("INTERMEDIATE"),
   modality: z.enum(["TEXT", "VOICE"]).default("TEXT"),
 });
@@ -56,6 +56,66 @@ export async function POST(req: NextRequest) {
     // Determine target career track
     const effectiveDomain = type === "DOMAIN" ? domain || user.domain || "Software_Engineering" : null;
 
+    if (type === "APTITUDE") {
+      // Retrieve recent aptitude sessions for candidate to avoid duplicate questions
+      const recentSessions = await prisma.interviewSession.findMany({
+        where: {
+          userId: user.id,
+          type: "APTITUDE",
+        },
+        orderBy: { startedAt: "desc" },
+        take: 3,
+        select: { focusArea: true },
+      });
+
+      const recentQuestionIds: string[] = [];
+      for (const s of recentSessions) {
+        if (s.focusArea) {
+          const ids = s.focusArea.split(",").map((id) => id.trim()).filter(Boolean);
+          recentQuestionIds.push(...ids);
+        }
+      }
+
+      // Randomly select 15 questions balanced across Quant, Logic, and Verbal, excluding recent IDs
+      const selectedQuestions = selectAptitudeQuestions(recentQuestionIds, 15);
+      const questionIdsCsv = selectedQuestions.map((q) => q.id).join(",");
+
+      const newSession = await prisma.interviewSession.create({
+        data: {
+          userId: user.id,
+          type: "APTITUDE",
+          domain: null,
+          focusArea: questionIdsCsv,
+          difficulty,
+          modality: modality as InterviewModality,
+        },
+      });
+
+      // Record system message with assigned question IDs
+      await prisma.interviewMessage.create({
+        data: {
+          sessionId: newSession.id,
+          role: "system",
+          content: JSON.stringify({
+            type: "APTITUDE_QUESTIONS",
+            questionIds: selectedQuestions.map((q) => q.id),
+          }),
+        },
+      });
+
+      const elapsed = (performance.now() - t0).toFixed(1);
+      console.log(`[API Timing: Start Session] Created Aptitude session ${newSession.id} with 15 questions in ${elapsed}ms`);
+
+      return successResponse(
+        {
+          sessionId: newSession.id,
+          session: newSession,
+          questions: selectedQuestions,
+        },
+        "Aptitude assessment initialized with 15 questions."
+      );
+    }
+
     // Create session in PostgreSQL (< 20ms)
     const newSession = await prisma.interviewSession.create({
       data: {
@@ -70,18 +130,6 @@ export async function POST(req: NextRequest) {
 
     const elapsed = (performance.now() - t0).toFixed(1);
     console.log(`[API Timing: Start Session] Created session ${newSession.id} in ${elapsed}ms`);
-
-    if (type === "APTITUDE") {
-      const questions = getAptitudeQuestions();
-      return successResponse(
-        {
-          sessionId: newSession.id,
-          session: newSession,
-          questions,
-        },
-        "Aptitude assessment initialized."
-      );
-    }
 
     // Return session immediately (<30ms) so the room mounts instantly.
     // The opening question will stream live in real time upon room mount!

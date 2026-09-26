@@ -273,10 +273,11 @@ export function AptitudeRoom({ sessionId, questions }: AptitudeRoomProps) {
 
             <Button
               onClick={handleSubmitAnswers}
-              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              loadingText="Scoring Assessment..."
               className="w-full sm:w-auto text-xs"
             >
-              {isSubmitting ? "Scoring Assessment..." : "Submit Test"}
+              Submit Test
             </Button>
           </CardFooter>
         </Card>

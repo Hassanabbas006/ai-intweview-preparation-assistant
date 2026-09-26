@@ -12,7 +12,7 @@ import { ChatInput } from "@/components/interview/chat-input";
 import { TypingIndicator } from "@/components/interview/typing-indicator";
 import { EndDialog } from "@/components/interview/end-dialog";
 import { AptitudeRoom } from "@/components/interview/aptitude-room";
-import { APTITUDE_QUESTION_BANK } from "@/lib/interview/aptitude-bank";
+import { AptitudeQuestion, selectAptitudeQuestions, getQuestionsByIds } from "@/lib/interview/aptitude-bank";
 import { getPersonaForInterview } from "@/lib/interview/personas";
 import { getDomainLabel } from "@/lib/constants/domains";
 import {
@@ -48,6 +48,7 @@ export default function InterviewSessionPage() {
   const sessionId = params.sessionId as string;
 
   const [session, setSession] = useState<SessionData | null>(null);
+  const [aptitudeQuestions, setAptitudeQuestions] = useState<AptitudeQuestion[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,18 +155,14 @@ export default function InterviewSessionPage() {
     }
   }, []);
 
-  // Load session data and initiate opening question stream in parallel (Zero-waterfall startup)
+  // Load session data and initiate opening question stream if conversational
   useEffect(() => {
     async function initRoom() {
       if (!sessionId) return;
 
-      // Concurrently fire session metadata retrieval and opening question stream
       const sessionFetchPromise = fetch(`/api/interview/${sessionId}`)
         .then((res) => res.json())
         .catch(() => ({ error: true, message: "Network error while loading session." }));
-
-      // Kick off opening stream immediately in parallel
-      triggerOpeningStream(sessionId);
 
       const data = await sessionFetchPromise;
 
@@ -178,8 +175,22 @@ export default function InterviewSessionPage() {
       const sessionData = data.data?.session as SessionData;
       if (sessionData) {
         setSession(sessionData);
-        if (sessionData.messages && sessionData.messages.length > 0) {
-          setMessages((prev) => (prev.length === 0 ? sessionData.messages : prev));
+
+        if (sessionData.type === "APTITUDE") {
+          if (data.data?.questions && data.data.questions.length > 0) {
+            setAptitudeQuestions(data.data.questions);
+          } else if (sessionData.focusArea) {
+            const ids = sessionData.focusArea.split(",").map((id) => id.trim()).filter(Boolean);
+            setAptitudeQuestions(getQuestionsByIds(ids));
+          } else {
+            setAptitudeQuestions(selectAptitudeQuestions([], 15));
+          }
+        } else {
+          // Kick off opening question stream for interactive interview tracks
+          triggerOpeningStream(sessionId);
+          if (sessionData.messages && sessionData.messages.length > 0) {
+            setMessages((prev) => (prev.length === 0 ? sessionData.messages : prev));
+          }
         }
       }
       setLoading(false);
@@ -375,7 +386,14 @@ export default function InterviewSessionPage() {
             </Link>
             <ThemeToggle />
           </div>
-          <AptitudeRoom sessionId={sessionId} questions={APTITUDE_QUESTION_BANK} />
+          <AptitudeRoom
+            sessionId={sessionId}
+            questions={
+              aptitudeQuestions.length > 0
+                ? aptitudeQuestions
+                : selectAptitudeQuestions([], 15)
+            }
+          />
         </div>
       </div>
     );

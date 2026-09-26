@@ -3,8 +3,10 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
-import { APTITUDE_QUESTION_BANK } from "@/lib/interview/aptitude-bank";
+import { getQuestionsByIds, selectAptitudeQuestions, AptitudeQuestion } from "@/lib/interview/aptitude-bank";
 import { successResponse, errorResponse } from "@/lib/api-response";
+
+export const dynamic = "force-dynamic";
 
 const SubmitAptitudeSchema = z.object({
   answers: z.record(z.number()),
@@ -14,6 +16,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
+  const t0 = performance.now();
   try {
     const session = await getServerSession(authOptions);
 
@@ -47,9 +50,20 @@ export async function POST(
       return errorResponse("Forbidden.", 403);
     }
 
-    // Evaluate answers
+    // Determine the questions that were assigned to this session
+    let sessionQuestions: AptitudeQuestion[] = [];
+    if (interviewSession.focusArea) {
+      const questionIds = interviewSession.focusArea.split(",").map((id) => id.trim()).filter(Boolean);
+      sessionQuestions = getQuestionsByIds(questionIds);
+    }
+
+    if (sessionQuestions.length === 0) {
+      sessionQuestions = selectAptitudeQuestions([], 15);
+    }
+
+    // Evaluate submitted answers against the assigned session questions
     let correctCount = 0;
-    const totalQuestions = APTITUDE_QUESTION_BANK.length;
+    const totalQuestions = sessionQuestions.length;
     const breakdown: Array<{
       id: string;
       category: string;
@@ -60,7 +74,7 @@ export async function POST(
       explanation: string;
     }> = [];
 
-    for (const q of APTITUDE_QUESTION_BANK) {
+    for (const q of sessionQuestions) {
       const selected = answers[q.id] !== undefined ? answers[q.id] : null;
       const isCorrect = selected === q.correctIndex;
       if (isCorrect) correctCount++;
@@ -97,6 +111,8 @@ export async function POST(
       }),
     ]);
 
+    console.log(`[API Timing: Aptitude Submit] Scored session ${sessionId} (${correctCount}/${totalQuestions}) in ${(performance.now() - t0).toFixed(1)}ms`);
+
     return successResponse(
       {
         score: scorePercentage,
@@ -107,6 +123,7 @@ export async function POST(
       "Aptitude assessment evaluated successfully."
     );
   } catch (err) {
+    console.error(`[API Timing: Aptitude Submit] Error after ${(performance.now() - t0).toFixed(1)}ms:`, err);
     return errorResponse("Failed to evaluate aptitude assessment.", 500, err);
   }
 }

@@ -2,12 +2,16 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
+import { getQuestionsByIds, selectAptitudeQuestions, AptitudeQuestion } from "@/lib/interview/aptitude-bank";
 import { successResponse, errorResponse } from "@/lib/api-response";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
+  const t0 = performance.now();
   try {
     const session = await getServerSession(authOptions);
 
@@ -41,11 +45,28 @@ export async function GET(
       return errorResponse("Forbidden.", 403);
     }
 
+    let questions: AptitudeQuestion[] | undefined = undefined;
+    if (interviewSession.type === "APTITUDE") {
+      if (interviewSession.focusArea) {
+        const questionIds = interviewSession.focusArea.split(",").map((id) => id.trim()).filter(Boolean);
+        questions = getQuestionsByIds(questionIds);
+      }
+      if (!questions || questions.length === 0) {
+        questions = selectAptitudeQuestions([], 15);
+      }
+    }
+
+    console.log(`[API Timing: Get Session] Retrieved session ${sessionId} in ${(performance.now() - t0).toFixed(1)}ms`);
+
     return successResponse(
-      { session: interviewSession },
+      {
+        session: interviewSession,
+        ...(questions ? { questions } : {}),
+      },
       "Session details retrieved successfully."
     );
   } catch (err) {
+    console.error(`[API Timing: Get Session] Error after ${(performance.now() - t0).toFixed(1)}ms:`, err);
     return errorResponse("Failed to load interview session.", 500, err);
   }
 }

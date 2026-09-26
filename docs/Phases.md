@@ -17,7 +17,7 @@ Config screen: pick interview type (HR / Aptitude / Managerial / Domain), then d
 
 This phase gets the most iteration time — test across all four interview types before considering it done. "Done" includes the interaction feeling responsive (streaming, typing indicator), not just the conversation logic being correct.
 
-*Added: questions must vary across a candidate's repeated sessions — prompts should avoid repeating the same opening questions session to session. For Aptitude specifically, the current fixed 8-question bank will repeat on every retake; needs either a much larger randomly-sampled question pool or LLM-generated aptitude questions instead of a static bank.*
+*Added: questions must vary across a candidate's repeated sessions — prompts should avoid repeating the same opening questions session to session. For Aptitude specifically: each attempt presents 15 questions (not the original 8), drawn randomly from a much larger question pool (45–60+ questions across quantitative/logical/verbal categories) rather than a small static bank, so repeat attempts don't show identical questions.*
 
 ## Phase 2.5: Voice-to-voice mode
 *Moved up from "later" — built right after text mode is solid, not deferred to post-launch.*
