@@ -7,6 +7,123 @@ interface BuildPromptParams {
   domain?: string | null;
   focusArea?: string | null;
   difficulty?: string | null;
+  consecutiveNonSubstantiveCount?: number;
+  isGreeting?: boolean;
+}
+
+/**
+ * Minimal fillers, short acknowledgments, and evasions
+ */
+const MINIMAL_FILLERS = new Set([
+  "ok", "okay", "yes", "yeah", "yep", "sure", "alright", "all right", "got it",
+  "k", "fine", "cool", "right", "understood", "true", "no", "nope", "yup", "nah",
+  "good", "nice", "great", "thanks", "thank you", "thx", "ty", "done",
+  "idk", "not sure", "no idea", "skip", "pass", "dunno", "nothing", "none",
+  "no clue", "cant say", "can't say", "dont know", "don't know", "whatever",
+  "maybe", "probably", "i guess", "guess so", "dont care", "don't care",
+]);
+
+const GREETINGS = new Set([
+  "hi", "hey", "hello", "good morning", "good afternoon", "good evening",
+  "how are you", "how are you doing", "hows it going", "how's it going",
+  "whats up", "what's up", "hey there", "hi there", "hello there", "good day",
+]);
+
+/**
+ * Checks if a string appears to be meaningless gibberish / keyboard mash
+ */
+export function isGibberish(text: string): boolean {
+  const clean = text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!clean || clean.length < 2) return true;
+
+  // Single repeated character: e.g. "aaaaa", "zzzz"
+  if (/^(.)\1+$/.test(clean)) return true;
+
+  // Only digits or symbols with no words
+  if (/^\d+$/.test(clean)) return true;
+
+  // Check if every word in the text has 3+ letters and zero vowels
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const allVowelless = words.every((w) => {
+    const letters = w.replace(/[^a-z]/g, "");
+    return letters.length >= 3 && !/[aeiouy]/.test(letters);
+  });
+  if (allVowelless) return true;
+
+  return false;
+}
+
+export function classifyCandidateMessage(text: string): "GREETING" | "NON_SUBSTANTIVE" | "SUBSTANTIVE" {
+  const normalized = text.trim().toLowerCase().replace(/^[.,!?;:]+|[.,!?;:]+$/g, "");
+  if (!normalized) return "NON_SUBSTANTIVE";
+
+  // Check greetings
+  if (GREETINGS.has(normalized)) {
+    return "GREETING";
+  }
+
+  // Check minimal fillers / evasions
+  if (MINIMAL_FILLERS.has(normalized)) {
+    return "NON_SUBSTANTIVE";
+  }
+
+  // Check gibberish
+  if (isGibberish(normalized)) {
+    return "NON_SUBSTANTIVE";
+  }
+
+  // Very short response (1-2 words under 12 characters total) with no technical substance
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length <= 2 && normalized.length < 12) {
+    const knownShortTech = new Set([
+      "sql", "css", "html", "aws", "gcp", "k8s", "rest", "grpc", "ci/cd", "vue",
+      "react", "node", "redis", "kafka", "java", "rust", "go", "c++", "c#", "git",
+      "bash", "nosql", "jwt", "tls", "ssl", "http", "graphql", "orm", "tdd", "bdd"
+    ]);
+    const hasTech = words.some((w) => knownShortTech.has(w));
+    if (!hasTech && (MINIMAL_FILLERS.has(normalized) || isGibberish(normalized) || words.length === 1)) {
+      return "NON_SUBSTANTIVE";
+    }
+  }
+
+  return "SUBSTANTIVE";
+}
+
+/**
+ * Calculates consecutive non-substantive replies from conversation history + latest message
+ */
+export function calculateConsecutiveNonSubstantiveCount(
+  previousMessages: { role: string; content: string }[],
+  currentMessage: string
+): { count: number; isGreeting: boolean } {
+  const currentClassification = classifyCandidateMessage(currentMessage);
+  if (currentClassification === "GREETING") {
+    return { count: 0, isGreeting: true };
+  }
+
+  if (currentClassification === "SUBSTANTIVE") {
+    return { count: 0, isGreeting: false };
+  }
+
+  // Current message is NON_SUBSTANTIVE (count starts at 1)
+  let count = 1;
+
+  // Walk backwards through previous user messages in history
+  const userMessages = previousMessages
+    .filter((m) => m.role === "user")
+    .slice()
+    .reverse();
+
+  for (const prevUserMsg of userMessages) {
+    const classification = classifyCandidateMessage(prevUserMsg.content);
+    if (classification === "NON_SUBSTANTIVE") {
+      count++;
+    } else {
+      break;
+    }
+  }
+
+  return { count, isGreeting: false };
 }
 
 export function buildSystemPrompt({
@@ -14,6 +131,8 @@ export function buildSystemPrompt({
   domain,
   focusArea,
   difficulty = "INTERMEDIATE",
+  consecutiveNonSubstantiveCount = 0,
+  isGreeting = false,
 }: BuildPromptParams): string {
   const persona = getPersonaForInterview(type, difficulty);
   const domainLabel = domain ? getDomainLabel(domain) : "Engineering";
@@ -23,6 +142,44 @@ export function buildSystemPrompt({
 You are ${persona.name}, ${persona.role} (${persona.yearsExperience} years experience).
 Background: ${persona.background}
 Interviewer Personality & Style: ${persona.style}
+
+${
+  isGreeting
+    ? `
+══════════════════════════════════════════════════════════════════
+⚡ LIVE TURN DIRECTIVE: CASUAL GREETING DETECTED
+- The candidate sent a casual greeting or small talk ("hey", "hi", "how are you").
+- Respond warmly in 1 short conversational phrase (e.g. "Hey! Good to have you here.", "Hi there — hope you're doing well.").
+- Immediately continue with the SAME question you were already asking.
+══════════════════════════════════════════════════════════════════`
+    : consecutiveNonSubstantiveCount >= 2
+    ? `
+══════════════════════════════════════════════════════════════════
+🚨 CRITICAL LIVE TURN DIRECTIVE: CONSECUTIVE NON-SUBSTANTIVE LIMIT REACHED (${consecutiveNonSubstantiveCount} in a row)
+- The candidate has now given ${consecutiveNonSubstantiveCount} non-substantive replies in a row to the current question without elaborating.
+- MANDATORY ACTION: DO NOT re-ask or probe the same question a 3rd/4th time. DO NOT loop on this topic.
+- Gracefully release the topic like a real human interviewer:
+  e.g., "No worries at all, let's come back to that if we have time — shifting gears a bit..." or "That's totally fine, we can loop back later if needed — moving over to..."
+- IMMEDIATELY pivot to a completely new, different question from another topic pillar in your domain pool.
+══════════════════════════════════════════════════════════════════`
+    : consecutiveNonSubstantiveCount === 1
+    ? `
+══════════════════════════════════════════════════════════════════
+⚠️ LIVE TURN DIRECTIVE: NON-SUBSTANTIVE REPLY DETECTED (Count: 1)
+- The candidate gave 1 non-substantive reply (e.g. minimal filler "fine"/"okay", gibberish, or vague text) to the current question.
+- MANDATORY RULES:
+  1. DO NOT start your response with any affirmative opener like "Got it", "Makes sense", "Understood", "Right", "Fair point", or "I see".
+  2. DO NOT advance to a new question or topic yet.
+  3. Patiently prompt them for real substance while holding the question open:
+     e.g., "Take your time — what specifically stood out to you on that?" or "Take your time — how would you approach that specifically?"
+══════════════════════════════════════════════════════════════════`
+    : `
+══════════════════════════════════════════════════════════════════
+✅ LIVE TURN DIRECTIVE: SUBSTANTIVE CANDIDATE RESPONSE
+- The candidate provided an actual, substantive response.
+- Anchor to one specific detail, tool, or parameter they mentioned and probe deeper or challenge trade-offs.
+══════════════════════════════════════════════════════════════════`
+}
 
 CORE BEHAVIOR RULES (apply to every response, no exceptions):
 

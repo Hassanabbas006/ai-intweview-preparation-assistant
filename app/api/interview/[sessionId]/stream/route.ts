@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
 import { getLLMProvider, LLMMessage, extractLLMErrorMessage } from "@/lib/llm";
-import { buildOpeningPrompt, buildSystemPrompt } from "@/lib/interview/prompts";
+import {
+  buildOpeningPrompt,
+  buildSystemPrompt,
+  calculateConsecutiveNonSubstantiveCount,
+} from "@/lib/interview/prompts";
 
 export const runtime = "nodejs";
 
@@ -64,15 +68,6 @@ export async function POST(
       );
     }
 
-    // Build system prompt for this track
-    const systemPrompt = buildSystemPrompt({
-      type: interviewSession.type,
-      domain: interviewSession.domain,
-      focusArea: interviewSession.focusArea,
-      difficulty: interviewSession.difficulty,
-    });
-    const tPromptBuilt = Date.now();
-
     const llm = getLLMProvider();
     const encoder = new TextEncoder();
 
@@ -85,6 +80,13 @@ export async function POST(
           { status: 200, headers: { "Content-Type": "application/json" } }
         );
       }
+
+      const systemPrompt = buildSystemPrompt({
+        type: interviewSession.type,
+        domain: interviewSession.domain,
+        focusArea: interviewSession.focusArea,
+        difficulty: interviewSession.difficulty,
+      });
 
       const openingInstruction = buildOpeningPrompt({
         type: interviewSession.type,
@@ -161,10 +163,9 @@ export async function POST(
 │ Active Provider & Model     : ${activeProvider || "groq"} (${activeModel || "primary"})
 │ 1. NextAuth Session Auth    : ${tAuth - t0}ms
 │ 2. PostgreSQL Session Lookup: ${tDbLookup - tAuth}ms
-│ 3. Prompt Construction      : ${tPromptBuilt - tDbLookup}ms
-│ 4. Time to First Token TTFT : ${tFirstToken ? tFirstToken - tStreamStart : 0}ms
-│ 5. LLM Stream Generation    : ${tStreamEnd - tStreamStart}ms (${accumulatedText.length} chars)
-│ 6. DB Message Insertion     : ${tFinished - tStreamEnd}ms
+│ 3. Time to First Token TTFT : ${tFirstToken ? tFirstToken - tStreamStart : 0}ms
+│ 4. LLM Stream Generation    : ${tStreamEnd - tStreamStart}ms (${accumulatedText.length} chars)
+│ 5. DB Message Insertion     : ${tFinished - tStreamEnd}ms
 │ ──────────────────────────────────────────────────────────
 │ TOTAL OPENING TURN DURATION : ${tFinished - t0}ms
 └────────────────────────────────────────────────────────────┘
@@ -200,6 +201,23 @@ export async function POST(
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    // Track consecutive non-substantive candidate replies
+    const { count: consecutiveNonSubstantiveCount, isGreeting } =
+      calculateConsecutiveNonSubstantiveCount(
+        interviewSession.messages,
+        candidateMessage
+      );
+
+    const systemPrompt = buildSystemPrompt({
+      type: interviewSession.type,
+      domain: interviewSession.domain,
+      focusArea: interviewSession.focusArea,
+      difficulty: interviewSession.difficulty,
+      consecutiveNonSubstantiveCount,
+      isGreeting,
+    });
+    const tPromptBuilt = Date.now();
 
     // Save candidate user message to DB immediately
     const tBeforeUserMsgSave = Date.now();
