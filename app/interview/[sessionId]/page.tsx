@@ -130,13 +130,14 @@ export default function InterviewSessionPage() {
             } else if (data.type === "token" && data.content) {
               setIsWaitingForFirstToken(false);
               currentAccumulated += data.content;
-              setStreamingText(currentAccumulated);
+              setStreamingText(currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, ""));
             } else if (data.type === "done") {
               messageCommitted = true;
+              const cleanContent = currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, "").trim();
               const openingMsg: MessageItem = {
                 id: data.messageId || `msg_opening_${Date.now()}`,
                 role: "assistant",
-                content: currentAccumulated.trim(),
+                content: cleanContent,
                 createdAt: new Date().toISOString(),
               };
               setMessages([openingMsg]);
@@ -156,10 +157,11 @@ export default function InterviewSessionPage() {
 
       // Fallback in case stream completed without explicit done event
       if (!messageCommitted && currentAccumulated.trim()) {
+        const cleanContent = currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, "").trim();
         const openingMsg: MessageItem = {
           id: `msg_opening_${Date.now()}`,
           role: "assistant",
-          content: currentAccumulated.trim(),
+          content: cleanContent,
           createdAt: new Date().toISOString(),
         };
         setMessages([openingMsg]);
@@ -292,19 +294,25 @@ export default function InterviewSessionPage() {
             } else if (data.type === "token" && data.content) {
               setIsWaitingForFirstToken(false);
               currentAccumulated += data.content;
-              setStreamingText(currentAccumulated);
+              setStreamingText(currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, ""));
             } else if (data.type === "done") {
               messageCommitted = true;
+              const cleanContent = currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, "").trim();
               const finalAssistantMsg: MessageItem = {
                 id: data.messageId || `msg_${Date.now()}`,
                 role: "assistant",
-                content: currentAccumulated.trim(),
+                content: cleanContent,
                 createdAt: new Date().toISOString(),
               };
               setMessages((prev) => [...prev, finalAssistantMsg]);
               setStreamingText("");
               setIsStreaming(false);
               setIsWaitingForFirstToken(false);
+
+              // Auto-conclude session on frontend if AI signaled end
+              if (data.isSessionEnded) {
+                setSession((prev) => (prev ? { ...prev, status: "COMPLETED" } : null));
+              }
             } else if (data.type === "error") {
               setError(data.message || "An error occurred during response generation.");
               setIsStreaming(false);
@@ -318,13 +326,18 @@ export default function InterviewSessionPage() {
 
       // Fallback in case stream completed without explicit done event
       if (!messageCommitted && currentAccumulated.trim()) {
+        const isEnded = currentAccumulated.includes("[SESSION_COMPLETED]");
+        const cleanContent = currentAccumulated.replace(/\[SESSION_COMPLETED\]/g, "").trim();
         const finalAssistantMsg: MessageItem = {
           id: `msg_${Date.now()}`,
           role: "assistant",
-          content: currentAccumulated.trim(),
+          content: cleanContent,
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, finalAssistantMsg]);
+        if (isEnded) {
+          setSession((prev) => (prev ? { ...prev, status: "COMPLETED" } : null));
+        }
       }
     } catch (err: any) {
       console.error("[Streaming Failure]:", err);

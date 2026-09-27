@@ -44,7 +44,7 @@ export const SARAH_MARTINEZ: InterviewerPersona = {
     "Values clarity, concrete architecture, and rigorous failure-mode thinking",
   ],
   speechPatterns: [
-    "Understood.",
+    "Looking at that architecture,",
     "Right, let's look at the failure scenario here.",
     "How does that scale under heavy load?",
     "What breaks first if that dependency fails?",

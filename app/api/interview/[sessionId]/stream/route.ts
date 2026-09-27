@@ -7,6 +7,8 @@ import {
   buildOpeningPrompt,
   buildSystemPrompt,
   calculateConsecutiveNonSubstantiveCount,
+  isCandidateRequestingToEnd,
+  SESSION_END_TOKEN,
 } from "@/lib/interview/prompts";
 
 export const runtime = "nodejs";
@@ -209,10 +211,16 @@ export async function POST(
         candidateMessage
       );
 
+    const isCandidateEnding = isCandidateRequestingToEnd(candidateMessage);
+
     const previousUserMessages = interviewSession.messages.filter(
       (m) => m.role === "user"
     );
     const isIntroTurn = previousUserMessages.length === 0;
+
+    const previousAssistantQuestions = interviewSession.messages
+      .filter((m) => m.role === "assistant")
+      .map((m) => m.content);
 
     const systemPrompt = buildSystemPrompt({
       type: interviewSession.type,
@@ -222,6 +230,8 @@ export async function POST(
       consecutiveNonSubstantiveCount,
       isGreeting,
       isIntroTurn,
+      isCandidateEnding,
+      previousQuestions: previousAssistantQuestions,
     });
     const tPromptBuilt = Date.now();
 
@@ -288,19 +298,34 @@ export async function POST(
 
           const tStreamEnd = Date.now();
 
+          // Check if assistant emitted structural session termination token
+          const isSessionEnded = accumulatedText.includes(SESSION_END_TOKEN);
+          const cleanAssistantText = accumulatedText
+            .replace(/\[SESSION_COMPLETED\]/g, "")
+            .trim();
+
           // Save completed assistant reply to database
-          if (accumulatedText.trim().length > 0) {
+          if (cleanAssistantText.length > 0) {
             const savedMsg = await prisma.interviewMessage.create({
               data: {
                 sessionId,
                 role: "assistant",
-                content: accumulatedText.trim(),
+                content: cleanAssistantText,
               },
             });
+
+            // Conclude session in DB if ended
+            if (isSessionEnded) {
+              await prisma.interviewSession.update({
+                where: { id: sessionId },
+                data: { status: "COMPLETED" },
+              });
+            }
 
             const donePayload = `data: ${JSON.stringify({
               type: "done",
               messageId: savedMsg.id,
+              isSessionEnded,
             })}\n\n`;
             controller.enqueue(encoder.encode(donePayload));
           }
