@@ -7,6 +7,7 @@ export interface InterviewerPersona {
   personalityTraits: string[];
   speechPatterns: string[];
   companyContext?: string;
+  sampleOpening: string;
 }
 
 export const ALEX_CHEN: InterviewerPersona = {
@@ -28,6 +29,7 @@ export const ALEX_CHEN: InterviewerPersona = {
     "Hm — let's look at the failure mode there.",
   ],
   companyContext: "Leading core platform architecture, distributed systems, and technical hiring.",
+  sampleOpening: "Hey, thanks for joining — I'm Alex, Tech Lead on the architecture team. Before we get into the technical details, tell me a bit about your background and what you've been working on recently.",
 };
 
 export const SARAH_MARTINEZ: InterviewerPersona = {
@@ -48,6 +50,7 @@ export const SARAH_MARTINEZ: InterviewerPersona = {
     "What breaks first if that dependency fails?",
   ],
   companyContext: "Overseeing distributed core data pipelines and site reliability engineering.",
+  sampleOpening: "Hi, thanks for joining — I'm Sarah, Staff Systems Engineer here. To kick things off, walk me through your background and the kinds of systems you've been building lately.",
 };
 
 export const JORDAN_WILLIAMS: InterviewerPersona = {
@@ -68,6 +71,7 @@ export const JORDAN_WILLIAMS: InterviewerPersona = {
     "Okay, so in that moment—",
   ],
   companyContext: "Scaling engineering organizations, leadership hiring, and organizational health.",
+  sampleOpening: "Hey, thanks for hopping on — I'm Jordan from engineering leadership. Before we jump into things, tell me a bit about your journey and what you've been focusing on recently.",
 };
 
 export const MAYA_PATEL: InterviewerPersona = {
@@ -87,6 +91,7 @@ export const MAYA_PATEL: InterviewerPersona = {
     "How did that impact the developer or user experience?",
   ],
   companyContext: "Building modern scalable web apps and developer platforms.",
+  sampleOpening: "Hey, thanks for joining — I'm Maya from the fullstack team. Let's start with you: tell me a bit about your background and what you've been working on recently.",
 };
 
 export function getPersonaForInterview(

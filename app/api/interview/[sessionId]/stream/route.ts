@@ -209,6 +209,11 @@ export async function POST(
         candidateMessage
       );
 
+    const previousUserMessages = interviewSession.messages.filter(
+      (m) => m.role === "user"
+    );
+    const isIntroTurn = previousUserMessages.length === 0;
+
     const systemPrompt = buildSystemPrompt({
       type: interviewSession.type,
       domain: interviewSession.domain,
@@ -216,6 +221,7 @@ export async function POST(
       difficulty: interviewSession.difficulty,
       consecutiveNonSubstantiveCount,
       isGreeting,
+      isIntroTurn,
     });
     const tPromptBuilt = Date.now();
 
