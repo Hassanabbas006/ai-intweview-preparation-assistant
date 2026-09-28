@@ -122,9 +122,9 @@ export default function UserDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="hover:border-primary/50 transition-colors">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-primary" /> Mock Interview Engine
+                    <Briefcase className="w-4 h-4 text-primary shrink-0" /> Mock Interview Engine
                   </CardTitle>
                   <Badge variant="success">Available Now</Badge>
                 </div>
@@ -143,9 +143,9 @@ export default function UserDashboardPage() {
 
             <Card className="hover:border-primary/50 transition-colors">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" /> ATS Resume Scanner
+                    <FileText className="w-4 h-4 text-primary shrink-0" /> ATS Resume Scanner
                   </CardTitle>
                   <Badge variant="neutral">Coming Soon</Badge>
                 </div>
@@ -164,9 +164,9 @@ export default function UserDashboardPage() {
 
             <Card className="hover:border-primary/50 transition-colors">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-primary" /> Coding Arena
+                    <Code2 className="w-4 h-4 text-primary shrink-0" /> Coding Arena
                   </CardTitle>
                   <Badge variant="neutral">Coming Soon</Badge>
                 </div>
