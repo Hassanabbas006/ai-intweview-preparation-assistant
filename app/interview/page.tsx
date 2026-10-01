@@ -22,6 +22,8 @@ import {
   History,
   CheckCircle2,
   Clock,
+  Mic,
+  MessageSquare,
 } from "lucide-react";
 
 interface TrackCardOption {
@@ -84,6 +86,7 @@ export default function InterviewHubPage() {
   const [softwareSubFocus, setSoftwareSubFocus] = useState<string>("Fullstack");
   const [focusArea, setFocusArea] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("INTERMEDIATE");
+  const [modality, setModality] = useState<"TEXT" | "VOICE">("TEXT");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,7 +127,7 @@ export default function InterviewHubPage() {
 
   const handleStartInterview = async () => {
     const t0 = performance.now();
-    console.log("[Client Timing: Start Interview] Button clicked, initializing session...");
+    console.log(`[Client Timing: Start Interview] Button clicked, initializing session with modality=${modality}...`);
     setError(null);
     setLoading(true);
 
@@ -142,7 +145,7 @@ export default function InterviewHubPage() {
           domain: selectedTrack === "DOMAIN" ? selectedDomain : null,
           focusArea: selectedTrack === "DOMAIN" ? combinedFocus : null,
           difficulty,
-          modality: "TEXT",
+          modality,
         }),
       });
 
@@ -245,12 +248,73 @@ export default function InterviewHubPage() {
           </div>
         </div>
 
-        {/* Step 2: Track Options & Customization */}
+        {/* Step 2: Select Modality */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">2</span>
+            Select Interview Modality
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setModality("TEXT")}
+              className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
+                modality === "TEXT"
+                  ? "border-primary bg-primary/10 shadow-soft ring-2 ring-primary/30"
+                  : "border-border bg-surface hover:border-primary/50 hover:bg-surface/80"
+              }`}
+            >
+              <div className={`p-3 rounded-input ${modality === "TEXT" ? "bg-primary text-white" : "bg-primary/10 text-primary"}`}>
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-bold text-sm text-text-primary">Interactive Chat</h3>
+                  <Badge variant={modality === "TEXT" ? "primary" : "neutral"} className="text-[10px]">
+                    Text Mode
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Type responses at your own pace with real-time token streaming, code formatting, and thought time.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModality("VOICE")}
+              className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
+                modality === "VOICE"
+                  ? "border-primary bg-primary/10 shadow-soft ring-2 ring-primary/30"
+                  : "border-border bg-surface hover:border-primary/50 hover:bg-surface/80"
+              }`}
+            >
+              <div className={`p-3 rounded-input ${modality === "VOICE" ? "bg-primary text-white" : "bg-primary/10 text-primary"}`}>
+                <Mic className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-heading font-bold text-sm text-text-primary">Live Voice Interview</h3>
+                  <Badge variant={modality === "VOICE" ? "primary" : "neutral"} className="text-[10px]">
+                    Voice Mode
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Speak directly with the AI interviewer using your microphone with live speech recognition and speech output.
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Step 3: Track Options & Customization */}
         <Card className="shadow-md">
           <CardHeader>
             <div className="flex items-center gap-2 text-primary">
               <Layers className="w-5 h-5" />
               <CardTitle className="text-lg">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-xs mr-2 font-bold">3</span>
                 Customize Round Parameters
               </CardTitle>
             </div>

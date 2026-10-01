@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Interview Preparation Assistant - Phase 2 Orchestrator & Engine Design Review (Updated)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+      @bottom-right {
+        content: "Page " counter(page);
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #0f172a;
+      background-color: #ffffff;
+      line-height: 1.55;
+      font-size: 9.5pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .header-banner {
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+
+    .header-tag {
+      display: inline-block;
+      background-color: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 9.5pt;
+      color: #475569;
+      font-weight: 400;
+      margin-bottom: 10px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+
+    .meta-item {
+      font-size: 8pt;
+    }
+
+    .meta-label {
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 7pt;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-val {
+      color: #0f172a;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+
+    h2 {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1e293b;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #2563eb;
+      margin-top: 12px;
+      margin-bottom: 5px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 8px;
+      color: #334155;
+    }
+
+    ul, ol {
+      margin-left: 18px;
+      margin-bottom: 10px;
+      color: #334155;
+    }
+
+    li {
+      margin-bottom: 3px;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      background-color: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.8pt;
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0 10px 0;
+      line-height: 1.4;
+      page-break-inside: avoid;
+    }
+
+    .callout {
+      background-color: #f0fdf4;
+      border-left: 3.5px solid #16a34a;
+      border-top: 1px solid #dcfce7;
+      border-right: 1px solid #dcfce7;
+      border-bottom: 1px solid #dcfce7;
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: 8.5pt;
+      color: #166534;
+      page-break-inside: avoid;
+    }
+
+    .callout-info {
+      background-color: #eff6ff;
+      border-left: 3.5px solid #2563eb;
+      border-top: 1px solid #dbeafe;
+      border-right: 1px solid #dbeafe;
+      border-bottom: 1px solid #dbeafe;
+      color: #1e40af;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 8pt;
+      page-break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+      font-size: 8pt;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 7pt;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-blue   { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-green  { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-orange { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      line-height: 1.38;
+      white-space: pre;
+      color: #0f172a;
+      margin: 8px 0 12px 0;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Banner -->
+  <div class="header-banner">
+    <div class="header-tag">Architectural Design Specification (Updated)</div>
+    <h1>Phase 2: Interview Orchestrator & Engine Design</h1>
+    <div class="subtitle">Deterministic Decision Plane, Reason Codes & Pluggable Progression Architecture</div>
+
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Review Status</div>
+        <div class="meta-val">Approved Design with Feedback</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Core Target</div>
+        <div class="meta-val">services/interview-engine.ts</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">State Layer</div>
+        <div class="meta-val">lib/interview/state.ts (Phase 1)</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Date</div>
+        <div class="meta-val">September 29, 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-title">Three Core Design Enhancements Incorporated:</div>
+    <ol style="margin-left: 14px; margin-bottom: 0;">
+      <li><strong>Explicit Reason Codes:</strong> Added <code>reasonCode</code> to <code>OrchestratorDecision</code> for complete observability and telemetry.</li>
+      <li><strong>Pluggable Progression Policy:</strong> Structured turn-count matrix as the baseline policy, allowing Phase 3 evaluation metrics to seamlessly influence decisions without architectural rewrites.</li>
+      <li><strong>Strict Clarification Directive:</strong> <code>ANSWER_CLARIFICATION</code> only generates the directive instruction; the LLM synthesizes the natural technical explanation.</li>
+    </ol>
+  </div>
+
+  <!-- SECTION 1 -->
+  <h2>1. System Architecture & Request Lifecycle</h2>
+  <div class="diagram-box">
+  +-------------------------------------------------------------------------------+
+  |                          1. CANDIDATE INPUT / SSE STREAM                      |
+  |  Candidate sends message via ChatInput -> POST /api/interview/[sessionId]/stream
+  +---------------------------------------+---------------------------------------+
+                                          |
+                                          v
+  +-------------------------------------------------------------------------------+
+  |                       2. STATE & MEMORY LAYER (Phase 1)                       |
+  |  lib/interview/state.ts: buildInterviewState(interviewSession, message)       |
+  |  - Reconstructs InterviewState, question count, non-substantive count         |
+  |  - Extracts candidate facts & builds anti-repetition blacklist (< 1ms)        |
+  +---------------------------------------+---------------------------------------+
+                                          |
+                                          v
+  +-------------------------------------------------------------------------------+
+  |                      3. INTERVIEW ORCHESTRATOR (Phase 2)                      |
+  |  services/interview-engine.ts: decideNextStep(state, options?)                |
+  |  - Evaluates Intent, Turn Depth & Pluggable Progression Policy                |
+  |  - Emits: OrchestratorDecision { action, reasonCode, targetPillar, directive }|
+  +---------------------------------------+---------------------------------------+
+                                          |
+                                          v
+  +-------------------------------------------------------------------------------+
+  |                         4. PROMPT GENERATOR & PERSONA                         |
+  |  lib/interview/prompts.ts: buildSystemPrompt({ state, decision })             |
+  |  - Injects persona style, candidate facts, blacklist, and 14 core rules      |
+  +---------------------------------------+---------------------------------------+
+                                          |
+                                          v
+  +-------------------------------------------------------------------------------+
+  |                         5. GROQ / QWEN STREAMING ENGINE                       |
+  |  lib/llm/groq.ts: streamText() -> Single-turn SSE streaming (~180ms TTFT)     |
+  +-------------------------------------------------------------------------------+
+  </div>
+
+  <!-- SECTION 2 & 3 -->
+  <h2>2. Enhanced Orchestrator Contracts</h2>
+
+  <h3>Input Contract</h3>
+  <pre><code>export interface ProgressionPolicyOptions {
+  turnsPerPillarTarget?: number;     // Baseline default: 2 substantive turns
+  evaluationScoreOverride?: number;  // Phase 3 hook: evaluation mastery score
+}
+
+export interface OrchestratorInput {
+  state: InterviewState;
+  candidateMessage?: string;
+  isOpening?: boolean;
+  options?: ProgressionPolicyOptions;
+}</code></pre>
+
+  <h3>Output Contract (`OrchestratorDecision` with `reasonCode`)</h3>
+  <pre><code>export type InterviewAction =
+  | "OPEN_INTERVIEW"         // Turn 0: Persona intro & background request
+  | "ACKNOWLEDGE_INTRO"      // Turn 1: Anchor to candidate's intro & ask Pillar 1
+  | "HANDLE_GREETING"        // Greeting: brief warm phrase + repeat question
+  | "PROMPT_FOR_SUBSTANCE"   // Non-substantive 1: Reprompt patiently without validation
+  | "PIVOT_AWAY"             // Non-substantive 2+: Release topic & switch pillar
+  | "ANSWER_CLARIFICATION"   // Candidate asked question: directive for LLM to answer in 1-2 sentences
+  | "HANDLE_META_REQUEST"    // Candidate meta-instruction: put candidate in hot seat
+  | "DRILL_DOWN"             // Substantive 1: probe tradeoff, mechanics, concurrency
+  | "CHALLENGE_TRADEOFF"     // Substantive 2: challenge failure modes & constraints
+  | "ADVANCE_PILLAR"         // Substantive 3+: transition to next domain pillar
+  | "CONCLUDE_ROUND";        // Wrap up requested or round complete: emit [SESSION_COMPLETED]
+
+export type DecisionReasonCode =
+  | "INITIAL_OPENING"
+  | "CANDIDATE_REQUESTED_END"
+  | "GREETING_DETECTED"
+  | "CANDIDATE_META_INSTRUCTION"
+  | "CANDIDATE_ASKED_CLARIFICATION"
+  | "NON_SUBSTANTIVE_REPROMPT"
+  | "NON_SUBSTANTIVE_PIVOT_LIMIT"
+  | "CANDIDATE_INTRO_RECEIVED"
+  | "SUBSTANTIVE_PROBE_DEPTH"
+  | "SUBSTANTIVE_CHALLENGE_TRADEOFF"
+  | "PILLAR_PROGRESSION_ADVANCE"
+  | "ALL_PILLARS_EXHAUSTED";
+
+export interface OrchestratorDecision {
+  action: InterviewAction;
+  reasonCode: DecisionReasonCode;
+  targetPillarIndex: number;
+  targetPillarName: string;
+  consecutiveTurnsOnPillar: number;
+  isTerminalTurn: boolean;
+  directiveInstruction: string;
+  groundingKeywords: string[];
+}</code></pre>
+
+  <!-- SECTION 4 -->
+  <div class="page-break"></div>
+  <h2>3. Deterministic Action Decision Matrix with Reason Codes</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 20%;">Condition</th>
+        <th style="width: 18%;">Action</th>
+        <th style="width: 24%;">Reason Code</th>
+        <th style="width: 38%;">Orchestrator Directive</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Opening Turn</strong></td>
+        <td><span class="badge badge-blue">OPEN_INTERVIEW</span></td>
+        <td><code>INITIAL_OPENING</code></td>
+        <td>Introduce persona name/role, ask candidate for background. No technical questions.</td>
+      </tr>
+      <tr>
+        <td><strong>End Intent</strong></td>
+        <td><span class="badge badge-orange">CONCLUDE_ROUND</span></td>
+        <td><code>CANDIDATE_REQUESTED_END</code></td>
+        <td>1–2 sentence closing thank you. Append <code>[SESSION_COMPLETED]</code>. No further questions.</td>
+      </tr>
+      <tr>
+        <td><strong>Greeting</strong></td>
+        <td><span class="badge badge-blue">HANDLE_GREETING</span></td>
+        <td><code>GREETING_DETECTED</code></td>
+        <td>1 short phrase greeting. Immediately continue the SAME question.</td>
+      </tr>
+      <tr>
+        <td><strong>Meta Request</strong></td>
+        <td><span class="badge badge-orange">HANDLE_META_REQUEST</span></td>
+        <td><code>CANDIDATE_META_INSTRUCTION</code></td>
+        <td>Do not answer yourself. Ask candidate directly about X to keep them in the hot seat.</td>
+      </tr>
+      <tr>
+        <td><strong>Clarification</strong></td>
+        <td><span class="badge badge-blue">ANSWER_CLARIFICATION</span></td>
+        <td><code>CANDIDATE_ASKED_CLARIFICATION</code></td>
+        <td>Answer candidate's technical query concisely in 1–2 sentences, then prompt them to proceed.</td>
+      </tr>
+      <tr>
+        <td><strong>Non-Answer 1</strong></td>
+        <td><span class="badge badge-orange">PROMPT_FOR_SUBSTANCE</span></td>
+        <td><code>NON_SUBSTANTIVE_REPROMPT</code></td>
+        <td>Do not affirm ("Got it"). Patiently reprompt for concrete details and tools.</td>
+      </tr>
+      <tr>
+        <td><strong>Non-Answer 2+</strong></td>
+        <td><span class="badge badge-orange">PIVOT_AWAY</span></td>
+        <td><code>NON_SUBSTANTIVE_PIVOT_LIMIT</code></td>
+        <td>Release topic naturally ("All good, let's look at..."). Advance to next pillar.</td>
+      </tr>
+      <tr>
+        <td><strong>Candidate Intro</strong></td>
+        <td><span class="badge badge-green">ACKNOWLEDGE_INTRO</span></td>
+        <td><code>CANDIDATE_INTRO_RECEIVED</code></td>
+        <td>Acknowledge 1 specific project/tool from intro. Ask opening question from Pillar 1.</td>
+      </tr>
+      <tr>
+        <td><strong>Substantive 1</strong></td>
+        <td><span class="badge badge-green">DRILL_DOWN</span></td>
+        <td><code>SUBSTANTIVE_PROBE_DEPTH</code></td>
+        <td>Anchor to specific detail. Probe internal mechanics, data structures, or trade-offs.</td>
+      </tr>
+      <tr>
+        <td><strong>Substantive 2</strong></td>
+        <td><span class="badge badge-green">CHALLENGE_TRADEOFF</span></td>
+        <td><code>SUBSTANTIVE_CHALLENGE_TRADEOFF</code></td>
+        <td>Challenge edge cases, high concurrency, or failure scenarios.</td>
+      </tr>
+      <tr>
+        <td><strong>Substantive 3+</strong></td>
+        <td><span class="badge badge-green">ADVANCE_PILLAR</span></td>
+        <td><code>PILLAR_PROGRESSION_ADVANCE</code></td>
+        <td>Transition to the next unvisited domain pillar in the track.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 5 -->
+  <h2>4. Clarification Boundary & Pluggable Progression Architecture</h2>
+
+  <h3>Strict Clarification Boundary (`ANSWER_CLARIFICATION`)</h3>
+  <p>To preserve clean architectural boundaries:</p>
+  <ul>
+    <li>The <strong>Orchestrator</strong> identifies that the candidate asked a question and outputs a directive: <em>"The candidate asked a clarification regarding the architecture. Answer knowledgeably in 1–2 sentences, then resume the interview scenario."</em></li>
+    <li>The <strong>Orchestrator NEVER hard-codes technical answers</strong>.</li>
+    <li>The <strong>LLM synthesizes the natural technical explanation</strong> within the persona's voice and background.</li>
+  </ul>
+
+  <h3>Pluggable Progression Architecture (Phase 2 &rarr; Phase 3 Evolution)</h3>
+  <div class="callout">
+    <div class="callout-title">Phase 2 Baseline &rarr; Phase 3 Evaluation Hooks</div>
+    In Phase 2, the progression policy utilizes the turn-count heuristic (2 substantive turns per pillar). The method <code>shouldAdvancePillar(state, options)</code> is modularized so that in Phase 3, real-time rubric scores (e.g. candidate demonstrated mastery after 1 turn or requires remediation) can dynamically adjust the threshold without refactoring the orchestrator core.
+  </div>
+
+  <!-- SECTION 6 -->
+  <div class="page-break"></div>
+  <h2>5. Phase 2 Implementation Boundaries</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">File Path</th>
+        <th style="width: 20%;">Target Status</th>
+        <th style="width: 50%;">Implementation Scope</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>services/interview-engine.ts</code></td>
+        <td><span class="badge badge-green">Implement</span></td>
+        <td>Implement <code>InterviewOrchestrator</code> class with <code>decideNextStep(state: InterviewState)</code> and <code>reasonCode</code>.</td>
+      </tr>
+      <tr>
+        <td><code>lib/interview/prompts.ts</code></td>
+        <td><span class="badge badge-blue">Enhance</span></td>
+        <td>Update <code>buildSystemPrompt</code> to consume <code>OrchestratorDecision</code> directly.</td>
+      </tr>
+      <tr>
+        <td><code>app/api/interview/[sessionId]/stream/route.ts</code></td>
+        <td><span class="badge badge-blue">Wire</span></td>
+        <td>Wire <code>InterviewOrchestrator.decideNextStep</code> into the live turn streaming route.</td>
+      </tr>
+      <tr>
+        <td><code>lib/auth/*</code> & <code>middleware.ts</code></td>
+        <td><span class="badge badge-orange">DO NOT MODIFY</span></td>
+        <td>Candidate NextAuth, isolated Admin HMAC auth, route protection.</td>
+      </tr>
+      <tr>
+        <td><code>prisma/schema.prisma</code></td>
+        <td><span class="badge badge-orange">DO NOT MODIFY</span></td>
+        <td>Zero database schema modifications.</td>
+      </tr>
+      <tr>
+        <td><code>app/interview/[sessionId]/page.tsx</code></td>
+        <td><span class="badge badge-orange">DO NOT MODIFY</span></td>
+        <td>UI layout, design system, theme tokens, SSE reader.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top: 25px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #64748b; text-align: center;">
+    AI Interview Preparation Assistant &bull; Phase 2 Design Specification Document &bull; Updated with User Feedback
+  </div>
+
+</body>
+</html>

@@ -1,8 +1,9 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/nextauth-options";
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { errorResponse } from "@/lib/api-response";
+import { ReportPersistenceService } from "@/services/report-persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export async function POST(
       return errorResponse("Forbidden.", 403);
     }
 
+    // 1. Mark session COMPLETED according to existing logic
     const updated = await prisma.interviewSession.update({
       where: { id: sessionId },
       data: {
@@ -44,12 +46,47 @@ export async function POST(
       },
     });
 
-    const elapsedMs = Date.now() - t0;
-    console.log(`[API Timing: End Session] Completed session ${sessionId} in ${elapsedMs}ms`);
+    // 2. Determine report state via Phase 4A-2 persistence service
+    // ARCHITECTURAL CONTRACT:
+    // - Does NOT claim pending EvaluationJobs
+    // - Does NOT retry EvaluationJobs
+    // - Does NOT call EvaluationWorker
+    // - Does NOT make LLM calls
+    let reportStatus: string = "WAITING_FOR_EVALUATIONS";
+    try {
+      const report = await ReportPersistenceService.getOrGenerateReport(sessionId);
+      reportStatus = report.status;
+    } catch (reportErr) {
+      console.error(`[End Session] Error generating report for ${sessionId}:`, reportErr);
+      reportStatus = "WAITING_FOR_EVALUATIONS";
+    }
 
-    return successResponse(
-      { session: updated, timingMs: elapsedMs },
-      "Interview session has ended successfully."
+    const elapsedMs = Date.now() - t0;
+    console.log(
+      `[API Timing: End Session] Completed session ${sessionId} (reportStatus: ${reportStatus}) in ${elapsedMs}ms`
+    );
+
+    const reportUrl = `/interview/${sessionId}/report`;
+    const responsePayload = {
+      sessionId,
+      sessionStatus: "COMPLETED",
+      reportStatus,
+      reportUrl,
+      session: updated,
+      timingMs: elapsedMs,
+    };
+
+    return NextResponse.json(
+      {
+        error: false,
+        message: "Interview session has ended successfully.",
+        sessionId,
+        sessionStatus: "COMPLETED",
+        reportStatus,
+        reportUrl,
+        data: responsePayload,
+      },
+      { status: 200 }
     );
   } catch (err) {
     const elapsedMs = Date.now() - t0;

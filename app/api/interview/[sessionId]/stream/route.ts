@@ -6,10 +6,11 @@ import { getLLMProvider, LLMMessage, extractLLMErrorMessage } from "@/lib/llm";
 import {
   buildOpeningPrompt,
   buildSystemPrompt,
-  calculateConsecutiveNonSubstantiveCount,
-  isCandidateRequestingToEnd,
+  buildInterviewState,
+  InterviewOrchestrator,
   SESSION_END_TOKEN,
 } from "@/lib/interview/prompts";
+import { EvaluationWorker } from "@/services/evaluation-worker";
 
 export const runtime = "nodejs";
 
@@ -83,19 +84,18 @@ export async function POST(
         );
       }
 
-      const systemPrompt = buildSystemPrompt({
-        type: interviewSession.type,
-        domain: interviewSession.domain,
-        focusArea: interviewSession.focusArea,
-        difficulty: interviewSession.difficulty,
+      // Reconstruct InterviewState & Orchestrator Decision
+      const interviewState = buildInterviewState(interviewSession);
+      const orchestratorDecision = InterviewOrchestrator.decideNextStep({
+        state: interviewState,
+        isOpening: true,
       });
 
-      const openingInstruction = buildOpeningPrompt({
-        type: interviewSession.type,
-        domain: interviewSession.domain,
-        focusArea: interviewSession.focusArea,
-        difficulty: interviewSession.difficulty,
+      const systemPrompt = buildSystemPrompt({
+        state: interviewState,
+        decision: orchestratorDecision,
       });
+      const openingInstruction = buildOpeningPrompt({ state: interviewState });
 
       const customStream = new ReadableStream({
         async start(controller) {
@@ -163,6 +163,7 @@ export async function POST(
 │ ⏱️  [TIMING PROFILE: OPENING QUESTION STREAM]
 ├────────────────────────────────────────────────────────────┤
 │ Active Provider & Model     : ${activeProvider || "groq"} (${activeModel || "primary"})
+│ Orchestrator Action         : ${orchestratorDecision.action} (${orchestratorDecision.reasonCode})
 │ 1. NextAuth Session Auth    : ${tAuth - t0}ms
 │ 2. PostgreSQL Session Lookup: ${tDbLookup - tAuth}ms
 │ 3. Time to First Token TTFT : ${tFirstToken ? tFirstToken - tStreamStart : 0}ms
@@ -204,46 +205,79 @@ export async function POST(
       );
     }
 
-    // Track consecutive non-substantive candidate replies
-    const { count: consecutiveNonSubstantiveCount, isGreeting } =
-      calculateConsecutiveNonSubstantiveCount(
-        interviewSession.messages,
-        candidateMessage
-      );
-
-    const isCandidateEnding = isCandidateRequestingToEnd(candidateMessage);
-
-    const previousUserMessages = interviewSession.messages.filter(
-      (m) => m.role === "user"
-    );
-    const isIntroTurn = previousUserMessages.length === 0;
-
-    const previousAssistantQuestions = interviewSession.messages
-      .filter((m) => m.role === "assistant")
-      .map((m) => m.content);
+    // Reconstruct complete InterviewState & determine next action via Orchestrator
+    const interviewState = buildInterviewState(interviewSession, candidateMessage);
+    const orchestratorDecision = InterviewOrchestrator.decideNextStep({
+      state: interviewState,
+      candidateMessage,
+    });
 
     const systemPrompt = buildSystemPrompt({
-      type: interviewSession.type,
-      domain: interviewSession.domain,
-      focusArea: interviewSession.focusArea,
-      difficulty: interviewSession.difficulty,
-      consecutiveNonSubstantiveCount,
-      isGreeting,
-      isIntroTurn,
-      isCandidateEnding,
-      previousQuestions: previousAssistantQuestions,
+      state: interviewState,
+      decision: orchestratorDecision,
     });
     const tPromptBuilt = Date.now();
 
-    // Save candidate user message to DB immediately
+    const pillarSlug = `PILLAR-${orchestratorDecision.targetPillarIndex}`;
+
+    // Context snapshot for durable background evaluator
+    const contextSnapshot = interviewSession.messages.slice(-8).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // Transactional Outbox: Atomically increment turn counter, persist Candidate Message + EvaluationJob(PENDING)
     const tBeforeUserMsgSave = Date.now();
-    await prisma.interviewMessage.create({
-      data: {
-        sessionId,
-        role: "user",
-        content: candidateMessage,
-      },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        const updatedSession = await tx.interviewSession.update({
+          where: { id: sessionId },
+          data: { turnCounter: { increment: 1 } },
+          select: { turnCounter: true },
+        });
+
+        const turnSequenceNumber = updatedSession.turnCounter;
+        const idempotencyKey = EvaluationWorker.getJobIdempotencyKey(sessionId, turnSequenceNumber);
+
+        await tx.interviewMessage.create({
+          data: {
+            sessionId,
+            role: "user",
+            content: candidateMessage,
+          },
+        });
+
+        await tx.evaluationJob.create({
+          data: {
+            idempotencyKey,
+            sessionId,
+            turnSequenceNumber,
+            pillarSlug,
+            candidateMessage,
+            contextHistory: contextSnapshot,
+            status: "PENDING",
+            maxRetries: 3,
+            timeoutMs: 5000,
+          },
+        });
+      });
+
+      // Fire non-blocking asynchronous evaluation dispatch
+      EvaluationWorker.claimNextJob()
+        .then((job) => job && EvaluationWorker.processJob(job))
+        .catch((err) => console.error("[Background Evaluation Trigger Error]:", err));
+    } catch (txErr: any) {
+      // Fallback: If evaluation job already exists or concurrency retry occurs,
+      // ensure user message persists so conversation stream is never interrupted.
+      console.warn("[Transactional Outbox Warning]:", txErr?.message);
+      await prisma.interviewMessage.create({
+        data: {
+          sessionId,
+          role: "user",
+          content: candidateMessage,
+        },
+      }).catch(() => {});
+    }
     const tAfterUserMsgSave = Date.now();
 
     // Construct full conversation history
@@ -299,7 +333,9 @@ export async function POST(
           const tStreamEnd = Date.now();
 
           // Check if assistant emitted structural session termination token
-          const isSessionEnded = accumulatedText.includes(SESSION_END_TOKEN);
+          const isSessionEnded =
+            accumulatedText.includes(SESSION_END_TOKEN) ||
+            orchestratorDecision.isTerminalTurn;
           const cleanAssistantText = accumulatedText
             .replace(/\[SESSION_COMPLETED\]/g, "")
             .trim();
@@ -338,10 +374,12 @@ export async function POST(
 │ ⏱️  [TIMING PROFILE: REGULAR CANDIDATE TURN]
 ├────────────────────────────────────────────────────────────┤
 │ Active Provider & Model     : ${activeProvider || "groq"} (${activeModel || "primary"})
+│ Orchestrator Action         : ${orchestratorDecision.action} (${orchestratorDecision.reasonCode})
+│ Target Pillar               : Pillar ${orchestratorDecision.targetPillarIndex + 1} (${orchestratorDecision.targetPillarName})
 │ 1. NextAuth Session Auth    : ${tAuth - t0}ms
 │ 2. PostgreSQL Session Lookup: ${tDbLookup - tAuth}ms
 │ 3. User Message DB Save     : ${tAfterUserMsgSave - tBeforeUserMsgSave}ms
-│ 4. Prompt Construction      : ${tPromptBuilt - tDbLookup}ms
+│ 4. Prompt & Orchestration   : ${tPromptBuilt - tDbLookup}ms
 │ 5. Time to First Token TTFT : ${tFirstToken ? tFirstToken - tStreamStart : 0}ms
 │ 6. LLM Stream Generation    : ${tStreamEnd - tStreamStart}ms (${accumulatedText.length} chars)
 │ 7. DB Message Insertion     : ${tFinished - tStreamEnd}ms
@@ -379,4 +417,3 @@ export async function POST(
     );
   }
 }
-

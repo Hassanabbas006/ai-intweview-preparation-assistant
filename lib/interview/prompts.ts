@@ -1,11 +1,56 @@
 import { InterviewType } from "@prisma/client";
 import { getDomainLabel } from "@/lib/constants/domains";
 import { getPersonaForInterview } from "./personas";
+import {
+  InterviewState,
+  getPromptMemoryContext,
+  SESSION_END_TOKEN,
+  isCandidateRequestingToEnd,
+  isGibberish,
+  classifyCandidateMessage,
+  calculateConsecutiveNonSubstantiveCount,
+  buildInterviewState,
+  extractCandidateFacts,
+  extractAskedQuestions,
+  extractTopicsCovered,
+  CandidateMemory,
+  InterviewTurnMessage,
+  PromptMemoryContext,
+} from "./state";
+import {
+  OrchestratorDecision,
+  InterviewAction,
+  DecisionReasonCode,
+  InterviewOrchestrator,
+} from "@/services/interview-engine";
 
-export const SESSION_END_TOKEN = "[SESSION_COMPLETED]";
+// Re-export state & engine interfaces and helpers for full backward compatibility
+export {
+  SESSION_END_TOKEN,
+  isCandidateRequestingToEnd,
+  isGibberish,
+  classifyCandidateMessage,
+  calculateConsecutiveNonSubstantiveCount,
+  buildInterviewState,
+  extractCandidateFacts,
+  extractAskedQuestions,
+  extractTopicsCovered,
+  InterviewOrchestrator,
+};
+export type {
+  InterviewState,
+  CandidateMemory,
+  InterviewTurnMessage,
+  PromptMemoryContext,
+  OrchestratorDecision,
+  InterviewAction,
+  DecisionReasonCode,
+};
 
 export interface BuildPromptParams {
-  type: InterviewType;
+  state?: InterviewState;
+  decision?: OrchestratorDecision;
+  type?: InterviewType;
   domain?: string | null;
   focusArea?: string | null;
   difficulty?: string | null;
@@ -17,192 +62,165 @@ export interface BuildPromptParams {
 }
 
 /**
- * Minimal fillers, short acknowledgments, and evasions
+ * Returns tailored depth and technical rigor guidelines matching the active difficulty tier and mastery
  */
-const MINIMAL_FILLERS = new Set([
-  "ok", "okay", "yes", "yeah", "yep", "sure", "alright", "all right", "got it",
-  "k", "fine", "cool", "right", "understood", "true", "no", "nope", "yup", "nah",
-  "good", "nice", "great", "thanks", "thank you", "thx", "ty", "done",
-  "idk", "not sure", "no idea", "skip", "pass", "dunno", "nothing", "none",
-  "no clue", "cant say", "can't say", "dont know", "don't know", "whatever",
-  "maybe", "probably", "i guess", "guess so", "dont care", "don't care",
-]);
-
-const GREETINGS = new Set([
-  "hi", "hey", "hello", "good morning", "good afternoon", "good evening",
-  "how are you", "how are you doing", "hows it going", "how's it going",
-  "whats up", "what's up", "hey there", "hi there", "hello there", "good day",
-]);
+export function getDifficultyDepthInstruction(
+  difficulty: string,
+  masteryLevel?: string
+): string {
+  const norm = (difficulty || "MID").toUpperCase();
+  switch (norm) {
+    case "JUNIOR":
+      return "Verify fundamental syntax, component roles, and core algorithmic/domain basics with patient guidance.";
+    case "MID":
+    case "INTERMEDIATE":
+      return "Probe standard production patterns, database normalization, caching strategies, and practical tradeoffs.";
+    case "SENIOR":
+      return "Increase architectural depth, challenge edge cases, high-concurrency bottlenecks, and failure-mode tradeoffs.";
+    case "LEAD":
+      return "Examine cross-system boundaries, team technical standards, capacity planning, and architectural extensibility.";
+    case "PRINCIPAL":
+      return "Examine distributed invariants, consensus trade-offs, catastrophic disaster recovery, and foundational design philosophy.";
+    default:
+      return "Probe concrete implementation specifics and architectural trade-offs.";
+  }
+}
 
 /**
- * Checks if candidate explicitly asks to end, wrap up, or stop the interview session
+ * Builds compact adaptive assessment context for interviewer prompt generation (Phase 3C)
  */
-export function isCandidateRequestingToEnd(text: string): boolean {
-  const normalized = text.toLowerCase().trim();
-  const endPatterns = [
-    /\b(end|stop|finish|close|conclude|wrap up|wrap-up)\b.*\b(interview|session|round|here|call|meeting)\b/,
-    /\b(let'?s|can we|i want to|i'd like to|could we)\b.*\b(wrap up|end|finish|stop|conclude)\b/,
-    /^(i'?m done|im done|i am done|that'?s all|thats all|let'?s wrap up|lets end|end interview|stop interview|finish interview)[.!]?$/,
+export function buildAdaptivePromptContext(
+  state?: InterviewState,
+  targetPillarIndex: number = 0
+): string {
+  if (!state) return "";
+
+  const mastery = state.masteryState;
+  const currentDiff = state.difficulty || "MID";
+
+  if (!mastery || !mastery.pillars || Object.keys(mastery.pillars).length === 0) {
+    const defaultInstruction = getDifficultyDepthInstruction(currentDiff);
+    return `\nADAPTIVE ASSESSMENT CONTEXT:
+• Target Difficulty Tier: ${currentDiff}
+• Adaptive Depth Guideline: ${defaultInstruction}\n`;
+  }
+
+  const pillarKey = `PILLAR-${targetPillarIndex}`;
+  const pillarMastery =
+    mastery.pillars[pillarKey] ||
+    Object.values(mastery.pillars)[Object.values(mastery.pillars).length - 1];
+
+  if (!pillarMastery || pillarMastery.totalSubstantiveTurns === 0) {
+    const defaultInstruction = getDifficultyDepthInstruction(currentDiff);
+    return `\nADAPTIVE ASSESSMENT CONTEXT:
+• Target Difficulty Tier: ${currentDiff}
+• Adaptive Depth Guideline: ${defaultInstruction}\n`;
+  }
+
+  const topDemonstrated = (pillarMastery.demonstratedConcepts || []).slice(-3);
+  const topGaps = (pillarMastery.identifiedGaps || []).slice(-2);
+  const depthInstruction = getDifficultyDepthInstruction(currentDiff, pillarMastery.masteryLevel);
+
+  const lines = [
+    `\nADAPTIVE ASSESSMENT CONTEXT:`,
+    `• Target Difficulty: ${currentDiff} | Mastery Tier: ${pillarMastery.masteryLevel} (Score: ${pillarMastery.rollingScore}/100)`,
   ];
-  return endPatterns.some((pattern) => pattern.test(normalized));
+
+  if (topDemonstrated.length > 0) {
+    lines.push(`• Demonstrated Strengths: ${topDemonstrated.join(", ")}`);
+  }
+  if (topGaps.length > 0) {
+    lines.push(`• Key Concepts to Probe/Gaps: ${topGaps.join(", ")}`);
+  }
+  lines.push(`• Adaptive Guideline: ${depthInstruction}\n`);
+
+  return lines.join("\n");
 }
 
-/**
- * Checks if a string appears to be meaningless gibberish / keyboard mash
- */
-export function isGibberish(text: string): boolean {
-  const clean = text.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (!clean || clean.length < 2) return true;
+export function buildSystemPrompt(params: BuildPromptParams): string {
+  const type = params.state?.type || params.type || "DOMAIN";
+  const domain = params.state ? params.state.domain : params.domain;
+  const focusArea = params.state ? params.state.focusArea : params.focusArea;
+  const difficulty = params.state?.difficulty || params.difficulty || "INTERMEDIATE";
 
-  // Single repeated character: e.g. "aaaaa", "zzzz"
-  if (/^(.)\1+$/.test(clean)) return true;
-
-  // Only digits or symbols with no words
-  if (/^\d+$/.test(clean)) return true;
-
-  // Check if every word in the text has 3+ letters and zero vowels
-  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const allVowelless = words.every((w) => {
-    const letters = w.replace(/[^a-z]/g, "");
-    return letters.length >= 3 && !/[aeiouy]/.test(letters);
-  });
-  if (allVowelless) return true;
-
-  return false;
-}
-
-export function classifyCandidateMessage(text: string): "GREETING" | "NON_SUBSTANTIVE" | "SUBSTANTIVE" {
-  const normalized = text.trim().toLowerCase().replace(/^[.,!?;:]+|[.,!?;:]+$/g, "");
-  if (!normalized) return "NON_SUBSTANTIVE";
-
-  // Check greetings
-  if (GREETINGS.has(normalized)) {
-    return "GREETING";
-  }
-
-  // Check minimal fillers / evasions
-  if (MINIMAL_FILLERS.has(normalized)) {
-    return "NON_SUBSTANTIVE";
-  }
-
-  // Check gibberish
-  if (isGibberish(normalized)) {
-    return "NON_SUBSTANTIVE";
-  }
-
-  // Very short response (1-2 words under 12 characters total) with no technical substance
-  const words = normalized.split(/\s+/).filter(Boolean);
-  if (words.length <= 2 && normalized.length < 12) {
-    const knownShortTech = new Set([
-      "sql", "css", "html", "aws", "gcp", "k8s", "rest", "grpc", "ci/cd", "vue",
-      "react", "node", "redis", "kafka", "java", "rust", "go", "c++", "c#", "git",
-      "bash", "nosql", "jwt", "tls", "ssl", "http", "graphql", "orm", "tdd", "bdd"
-    ]);
-    const hasTech = words.some((w) => knownShortTech.has(w));
-    if (!hasTech && (MINIMAL_FILLERS.has(normalized) || isGibberish(normalized) || words.length === 1)) {
-      return "NON_SUBSTANTIVE";
-    }
-  }
-
-  return "SUBSTANTIVE";
-}
-
-/**
- * Calculates consecutive non-substantive replies from conversation history + latest message
- */
-export function calculateConsecutiveNonSubstantiveCount(
-  previousMessages: { role: string; content: string }[],
-  currentMessage: string
-): { count: number; isGreeting: boolean } {
-  const currentClassification = classifyCandidateMessage(currentMessage);
-  if (currentClassification === "GREETING") {
-    return { count: 0, isGreeting: true };
-  }
-
-  if (currentClassification === "SUBSTANTIVE") {
-    return { count: 0, isGreeting: false };
-  }
-
-  // Current message is NON_SUBSTANTIVE (count starts at 1)
-  let count = 1;
-
-  // Walk backwards through previous user messages in history
-  const userMessages = previousMessages
-    .filter((m) => m.role === "user")
-    .slice()
-    .reverse();
-
-  for (const prevUserMsg of userMessages) {
-    const classification = classifyCandidateMessage(prevUserMsg.content);
-    if (classification === "NON_SUBSTANTIVE") {
-      count++;
-    } else {
-      break;
-    }
-  }
-
-  return { count, isGreeting: false };
-}
-
-export function buildSystemPrompt({
-  type,
-  domain,
-  focusArea,
-  difficulty = "INTERMEDIATE",
-  consecutiveNonSubstantiveCount = 0,
-  isGreeting = false,
-  isIntroTurn = false,
-  isCandidateEnding = false,
-  previousQuestions = [],
-}: BuildPromptParams): string {
   const persona = getPersonaForInterview(type, difficulty);
   const domainLabel = domain ? getDomainLabel(domain) : "Engineering";
   const focus = focusArea ? `with a specialized focus on "${focusArea}"` : "";
 
-  const previousQuestionsSection =
-    previousQuestions && previousQuestions.length > 0
-      ? `\nPREVIOUS QUESTIONS ASKED IN THIS SESSION (DO NOT REPEAT):\n${previousQuestions
-          .map((q, idx) => `  ${idx + 1}. "${q.replace(/\s+/g, " ").slice(0, 140)}..."`)
-          .join("\n")}\n- STRICT RULE: Never repeat, re-ask, or closely rephrase any question from the list above. Always explore a fresh topic or deeper technical tradeoff.\n`
-      : "";
+  let previousQuestionsSection = "";
+  let candidateMemorySection = "";
+  let topicsCoveredSection = "";
+  let liveDirectiveSection = "";
+  let adaptiveContextSection = "";
+
+  if (params.state) {
+    const memoryContext = getPromptMemoryContext(params.state);
+    previousQuestionsSection = memoryContext.previousQuestionsBlock;
+    candidateMemorySection = memoryContext.candidateMemoryBlock;
+    topicsCoveredSection = memoryContext.topicsCoveredBlock;
+    liveDirectiveSection = memoryContext.liveDirectiveBlock;
+    const targetPillarIndex = params.decision?.targetPillarIndex ?? 0;
+    adaptiveContextSection = buildAdaptivePromptContext(params.state, targetPillarIndex);
+  } else {
+    // Fallback assembly if parameters were passed individually
+    const previousQuestions = params.previousQuestions || [];
+    previousQuestionsSection =
+      previousQuestions.length > 0
+        ? `\nPREVIOUS QUESTIONS ASKED IN THIS SESSION (DO NOT REPEAT):\n${previousQuestions
+            .map((q, idx) => `  ${idx + 1}. "${q.replace(/\s+/g, " ").slice(0, 140)}..."`)
+            .join("\n")}\n- STRICT RULE: Never repeat, re-ask, or closely rephrase any question from the list above. Always explore a fresh topic or deeper technical tradeoff.\n`
+        : "";
+
+    if (params.isCandidateEnding) {
+      liveDirectiveSection = `🚨 LIVE TURN DIRECTIVE: CANDIDATE REQUESTED TO CONCLUDE SESSION
+- The candidate explicitly requested to end, finish, or wrap up the interview.
+- Warmly acknowledge their request, thank them for their time and technical discussion in 1-2 polite sentences.
+- MANDATORY: You MUST append ${SESSION_END_TOKEN} at the very end of your response (e.g. "Thanks so much for your time today, and best of luck with next steps! ${SESSION_END_TOKEN}").
+- DO NOT ask any further questions.`;
+    } else if (params.isGreeting) {
+      liveDirectiveSection = `⚡ LIVE TURN DIRECTIVE: GREETING DETECTED
+- The candidate sent a casual greeting/small talk ("hey", "hi", "how are you").
+- Respond warmly in 1 short phrase (e.g. "Hey! Good to have you here.", "Hi there — hope you're doing well.").
+- Immediately continue with the SAME question you were already asking.`;
+    } else if ((params.consecutiveNonSubstantiveCount || 0) >= 2) {
+      liveDirectiveSection = `🚨 LIVE TURN DIRECTIVE: CONSECUTIVE NON-SUBSTANTIVE LIMIT REACHED (${params.consecutiveNonSubstantiveCount} in a row)
+- The candidate has given ${params.consecutiveNonSubstantiveCount} non-substantive replies in a row without answering.
+- DO NOT re-ask or loop on this topic. DO NOT repeat formulaic phrases.
+- Release the topic naturally using varied phrasing (e.g. "All good, we can circle back to that later — let's look at...", "That's totally fine, moving over to...", "No problem at all — let's explore how you handle...", "Fair enough, leaving that aside, let's talk about...") and IMMEDIATELY pivot to a fresh question from another topic pillar.`;
+    } else if ((params.consecutiveNonSubstantiveCount || 0) === 1) {
+      liveDirectiveSection = `⚠️ LIVE TURN DIRECTIVE: NON-SUBSTANTIVE INPUT (Count: 1)
+- The candidate gave 1 minimal/filler reply ("fine"/"okay"/gibberish/evasive).
+- DO NOT start with any affirmative opener ("Got it", "Understood", "Makes sense", "Right", "Fair point", "I see", "Okay").
+- DO NOT advance to a new question yet.
+- Patiently prompt for real substance using varied phrasing (e.g. "Take your time — walk me through how you'd approach that.", "I want to make sure I understand — could you say a bit more on that?", "Could you elaborate on the specific details or tools you'd use there?").`;
+    } else if (params.isIntroTurn) {
+      liveDirectiveSection = `⚡ LIVE TURN DIRECTIVE: CANDIDATE INTRODUCTION TURN
+- The candidate just shared their background and recent work.
+- Acknowledge 1 specific project, technology, or domain they mentioned in 1 brief sentence (e.g. "Sounds like you've done substantial work with...", "Interesting background with...").
+- DO NOT use AI clichés ("Awesome!", "Great background!", "Let's dive in!").
+- Immediately ask your first opening question from Pillar 1, connecting it naturally to their background where possible.`;
+    } else {
+      liveDirectiveSection = `✅ LIVE TURN DIRECTIVE: SUBSTANTIVE RESPONSE
+- The candidate provided a genuine answer. Anchor to a specific detail, tool, or parameter they mentioned and probe deeper or challenge tradeoffs.`;
+    }
+  }
+
+  // If explicit Orchestrator Decision is provided, it takes precedence for the live turn directive
+  if (params.decision) {
+    const kw =
+      params.decision.groundingKeywords && params.decision.groundingKeywords.length > 0
+        ? `\nCore Pillar Focus: ${params.decision.groundingKeywords.join(", ")}`
+        : "";
+
+    liveDirectiveSection = `⚡ ORCHESTRATOR DIRECTIVE [Action: ${params.decision.action} | Reason: ${params.decision.reasonCode} | Target Pillar: ${params.decision.targetPillarName}]:\n- ${params.decision.directiveInstruction}${kw}`;
+  }
 
   return `
 You are ${persona.name}, ${persona.role} (${persona.yearsExperience} yrs exp).
 Background: ${persona.background}
 Style: ${persona.style}
-${previousQuestionsSection}
-${
-  isCandidateEnding
-    ? `🚨 LIVE TURN DIRECTIVE: CANDIDATE REQUESTED TO CONCLUDE SESSION
-- The candidate explicitly requested to end, finish, or wrap up the interview.
-- Warmly acknowledge their request, thank them for their time and technical discussion in 1-2 polite sentences.
-- MANDATORY: You MUST append ${SESSION_END_TOKEN} at the very end of your response (e.g. "Thanks so much for your time today, and best of luck with next steps! ${SESSION_END_TOKEN}").
-- DO NOT ask any further questions.`
-    : isGreeting
-    ? `⚡ LIVE TURN DIRECTIVE: GREETING DETECTED
-- The candidate sent a casual greeting/small talk ("hey", "hi", "how are you").
-- Respond warmly in 1 short phrase (e.g. "Hey! Good to have you here.", "Hi there — hope you're doing well.").
-- Immediately continue with the SAME question you were already asking.`
-    : consecutiveNonSubstantiveCount >= 2
-    ? `🚨 LIVE TURN DIRECTIVE: CONSECUTIVE NON-SUBSTANTIVE LIMIT REACHED (${consecutiveNonSubstantiveCount} in a row)
-- The candidate has given ${consecutiveNonSubstantiveCount} non-substantive replies in a row without answering.
-- DO NOT re-ask or loop on this topic. DO NOT repeat formulaic phrases.
-- Release the topic naturally using varied phrasing (e.g. "All good, we can circle back to that later — let's look at...", "That's totally fine, moving over to...", "No problem at all — let's explore how you handle...", "Fair enough, leaving that aside, let's talk about...") and IMMEDIATELY pivot to a fresh question from another topic pillar.`
-    : consecutiveNonSubstantiveCount === 1
-    ? `⚠️ LIVE TURN DIRECTIVE: NON-SUBSTANTIVE INPUT (Count: 1)
-- The candidate gave 1 minimal/filler reply ("fine"/"okay"/gibberish/evasive).
-- DO NOT start with any affirmative opener ("Got it", "Understood", "Makes sense", "Right", "Fair point", "I see", "Okay").
-- DO NOT advance to a new question yet.
-- Patiently prompt for real substance using varied phrasing (e.g. "Take your time — walk me through how you'd approach that.", "I want to make sure I understand — could you say a bit more on that?", "Could you elaborate on the specific details or tools you'd use there?").`
-    : isIntroTurn
-    ? `⚡ LIVE TURN DIRECTIVE: CANDIDATE INTRODUCTION TURN
-- The candidate just shared their background and recent work.
-- Acknowledge 1 specific project, technology, or domain they mentioned in 1 brief sentence (e.g. "Sounds like you've done substantial work with...", "Interesting background with...").
-- DO NOT use AI clichés ("Awesome!", "Great background!", "Let's dive in!").
-- Immediately ask your first opening question from Pillar 1, connecting it naturally to their background where possible.`
-    : `✅ LIVE TURN DIRECTIVE: SUBSTANTIVE RESPONSE
-- The candidate provided a genuine answer. Anchor to a specific detail, tool, or parameter they mentioned and probe deeper or challenge tradeoffs.`
-}
+${candidateMemorySection}${topicsCoveredSection}${previousQuestionsSection}${adaptiveContextSection}
+${liveDirectiveSection}
 
 CORE BEHAVIOR RULES (apply to every response, no exceptions):
 1. NEVER FAKE VALIDATION: If input is gibberish ("skhfg ds"), 1-word filler ("yes", "ok", "fine", "sure", "got it"), or evasive ("idk", "skip"), NEVER affirm or validate it. Never start non-answers with affirmative openers ("Got it", "Understood", "Makes sense").
@@ -239,12 +257,12 @@ ${
 `.trim();
 }
 
-export function buildOpeningPrompt({
-  type,
-  domain,
-  focusArea,
-  difficulty = "INTERMEDIATE",
-}: BuildPromptParams): string {
+export function buildOpeningPrompt(params: BuildPromptParams): string {
+  const type = params.state?.type || params.type || "DOMAIN";
+  const domain = params.state ? params.state.domain : params.domain;
+  const focusArea = params.state ? params.state.focusArea : params.focusArea;
+  const difficulty = params.state?.difficulty || params.difficulty || "INTERMEDIATE";
+
   const persona = getPersonaForInterview(type, difficulty);
   const domainLabel = domain ? getDomainLabel(domain) : "Engineering";
   const focus = focusArea ? ` with a focus on ${focusArea}` : "";

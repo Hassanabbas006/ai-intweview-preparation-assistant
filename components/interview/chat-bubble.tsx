@@ -1,7 +1,7 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User } from "lucide-react";
+import { User, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatBubbleProps {
@@ -9,9 +9,10 @@ interface ChatBubbleProps {
   content: string;
   isStreaming?: boolean;
   interviewerName?: string;
+  isVoice?: boolean;
 }
 
-export function ChatBubble({ role, content, isStreaming, interviewerName }: ChatBubbleProps) {
+export function ChatBubble({ role, content, isStreaming, interviewerName, isVoice }: ChatBubbleProps) {
   const isAI = role === "assistant";
 
   return (
@@ -31,6 +32,8 @@ export function ChatBubble({ role, content, isStreaming, interviewerName }: Chat
       >
         {isAI ? (
           <span className="font-heading font-bold text-xs tracking-tight select-none">AI</span>
+        ) : isVoice ? (
+          <Mic className="w-4 h-4 text-primary" />
         ) : (
           <User className="w-4 h-4" />
         )}
@@ -45,12 +48,17 @@ export function ChatBubble({ role, content, isStreaming, interviewerName }: Chat
         )}
       >
         <div className="flex items-center justify-between gap-4 mb-2 pb-1 border-b border-border/40">
-          <span className="text-[11px] font-semibold text-text-secondary">
+          <span className="text-[11px] font-semibold text-text-secondary inline-flex items-center gap-1.5">
             {isAI
               ? interviewerName
                 ? `${interviewerName} (Interviewer)`
                 : "Interviewer"
               : "You (Candidate)"}
+            {!isAI && isVoice && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-normal bg-primary/10 px-1.5 py-0.2 rounded-full">
+                <Mic className="w-2.5 h-2.5" /> Spoken
+              </span>
+            )}
           </span>
           {isStreaming && (
             <span className="inline-flex items-center gap-1 text-[10px] font-mono text-primary animate-pulse">

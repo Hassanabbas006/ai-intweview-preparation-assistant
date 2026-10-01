@@ -15,6 +15,8 @@ import { AptitudeRoom } from "@/components/interview/aptitude-room";
 import { AptitudeQuestion, selectAptitudeQuestions, getQuestionsByIds } from "@/lib/interview/aptitude-bank";
 import { getPersonaForInterview } from "@/lib/interview/personas";
 import { getDomainLabel } from "@/lib/constants/domains";
+import { useVoiceSession } from "@/lib/voice/use-voice-session";
+import { VoiceStatusBar } from "@/components/interview/voice-status-bar";
 import {
   ArrowLeft,
   Sparkles,
@@ -23,6 +25,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Mic,
+  MessageSquare,
 } from "lucide-react";
 
 interface MessageItem {
@@ -38,6 +42,7 @@ interface SessionData {
   domain?: string | null;
   focusArea?: string | null;
   difficulty?: string | null;
+  modality?: "TEXT" | "VOICE";
   status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
   messages: MessageItem[];
 }
@@ -66,6 +71,28 @@ export default function InterviewSessionPage() {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
 
+  // Modality & Voice Session state
+  const [modality, setModality] = useState<"TEXT" | "VOICE">("TEXT");
+  const modalityRef = useRef<"TEXT" | "VOICE">("TEXT");
+  modalityRef.current = modality;
+
+  const voiceMessageIdsRef = useRef<Set<string>>(new Set());
+  const handleSendMessageRef = useRef<(text: string, isFromVoice?: boolean) => Promise<void>>();
+
+  const handleVoiceTranscript = React.useCallback((transcript: string) => {
+    if (transcript.trim()) {
+      handleSendMessageRef.current?.(transcript, true);
+    }
+  }, []);
+
+  const voiceSession = useVoiceSession({
+    enabled: modality === "VOICE",
+    onFinalTranscript: handleVoiceTranscript,
+  });
+
+  const voiceSessionRef = useRef(voiceSession);
+  voiceSessionRef.current = voiceSession;
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasTriggeredOpeningRef = useRef(false);
@@ -84,6 +111,7 @@ export default function InterviewSessionPage() {
   useEffect(() => {
     scrollToBottom(isStreaming ? "auto" : "smooth");
   }, [messages, streamingText, isWaitingForFirstToken, isStreaming, scrollToBottom]);
+
   const triggerOpeningStream = React.useCallback(async (targetSessionId: string) => {
     if (hasTriggeredOpeningRef.current) return;
     hasTriggeredOpeningRef.current = true;
@@ -144,6 +172,10 @@ export default function InterviewSessionPage() {
               setStreamingText("");
               setIsStreaming(false);
               setIsWaitingForFirstToken(false);
+
+              if (modalityRef.current === "VOICE") {
+                voiceSessionRef.current?.speak(cleanContent, data.messageId || openingMsg.id);
+              }
             } else if (data.type === "error") {
               setError(data.message || "Failed to stream opening question.");
               setIsStreaming(false);
@@ -165,6 +197,9 @@ export default function InterviewSessionPage() {
           createdAt: new Date().toISOString(),
         };
         setMessages([openingMsg]);
+        if (modalityRef.current === "VOICE") {
+          voiceSessionRef.current?.speak(cleanContent, openingMsg.id);
+        }
       }
     } catch (err: any) {
       console.error("[Opening Stream Failure]:", err);
@@ -196,6 +231,9 @@ export default function InterviewSessionPage() {
       const sessionData = data.data?.session as SessionData;
       if (sessionData) {
         setSession(sessionData);
+        if (sessionData.modality) {
+          setModality(sessionData.modality);
+        }
 
         if (sessionData.type === "APTITUDE") {
           if (data.data?.questions && data.data.questions.length > 0) {
@@ -238,10 +276,13 @@ export default function InterviewSessionPage() {
   };
 
   // Send message & handle token-by-token streaming
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, isFromVoice: boolean = false) => {
     if (!text.trim() || isStreaming || !session) return;
 
     setError(null);
+
+    // Stop interviewer speech playback immediately if active
+    voiceSessionRef.current?.stopSpeaking();
 
     // Optimistically add user message to UI
     const tempUserMsg: MessageItem = {
@@ -250,6 +291,10 @@ export default function InterviewSessionPage() {
       content: text.trim(),
       createdAt: new Date().toISOString(),
     };
+
+    if (isFromVoice) {
+      voiceMessageIdsRef.current.add(tempUserMsg.id);
+    }
 
     setMessages((prev) => [...prev, tempUserMsg]);
     setIsWaitingForFirstToken(true);
@@ -313,6 +358,11 @@ export default function InterviewSessionPage() {
               if (data.isSessionEnded) {
                 setSession((prev) => (prev ? { ...prev, status: "COMPLETED" } : null));
               }
+
+              // Voice playback if in VOICE modality
+              if (modalityRef.current === "VOICE") {
+                voiceSessionRef.current?.speak(cleanContent, data.messageId || finalAssistantMsg.id);
+              }
             } else if (data.type === "error") {
               setError(data.message || "An error occurred during response generation.");
               setIsStreaming(false);
@@ -338,6 +388,9 @@ export default function InterviewSessionPage() {
         if (isEnded) {
           setSession((prev) => (prev ? { ...prev, status: "COMPLETED" } : null));
         }
+        if (modalityRef.current === "VOICE") {
+          voiceSessionRef.current?.speak(cleanContent, finalAssistantMsg.id);
+        }
       }
     } catch (err: any) {
       console.error("[Streaming Failure]:", err);
@@ -349,10 +402,14 @@ export default function InterviewSessionPage() {
     }
   };
 
+  handleSendMessageRef.current = handleSendMessage;
+
   // End interview session
   const handleEndInterview = async () => {
     const t0 = performance.now();
     console.log(`[Client Timing: End Interview] User confirmed end interview for session ${sessionId}...`);
+    voiceSessionRef.current?.stopSpeaking();
+    voiceSessionRef.current?.stopListening();
     setIsEndingSession(true);
     setShowEndDialog(false);
 
@@ -516,6 +573,37 @@ export default function InterviewSessionPage() {
               </div>
             )}
 
+            {/* Live Modality Switcher */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = modality === "VOICE" ? "TEXT" : "VOICE";
+                if (next === "TEXT") {
+                  voiceSession.stopSpeaking();
+                  voiceSession.stopListening();
+                }
+                setModality(next);
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                modality === "VOICE"
+                  ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                  : "bg-surface border-border text-text-secondary hover:text-text-primary"
+              }`}
+              title="Click to toggle between Voice and Text mode"
+            >
+              {modality === "VOICE" ? (
+                <>
+                  <Mic className="w-3 h-3 text-primary animate-pulse" />
+                  <span className="hidden xs:inline">Voice</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-3 h-3 text-text-secondary" />
+                  <span className="hidden xs:inline">Text</span>
+                </>
+              )}
+            </button>
+
             <ThemeToggle />
 
             {!isCompleted ? (
@@ -553,6 +641,7 @@ export default function InterviewSessionPage() {
               role={msg.role}
               content={msg.content}
               interviewerName={persona?.name}
+              isVoice={voiceMessageIdsRef.current.has(msg.id)}
             />
           ))}
 
@@ -582,14 +671,48 @@ export default function InterviewSessionPage() {
         </div>
 
         {/* Bottom Input Bar */}
-        <div className="shrink-0 pt-2 pb-2 sm:pb-3 z-20 w-full">
+        <div className="shrink-0 pt-2 pb-2 sm:pb-3 z-20 w-full space-y-2">
+          {modality === "VOICE" && !isCompleted && (
+            <VoiceStatusBar
+              modality={modality}
+              onToggleModality={() => {
+                const next = modality === "VOICE" ? "TEXT" : "VOICE";
+                if (next === "TEXT") {
+                  voiceSession.stopSpeaking();
+                  voiceSession.stopListening();
+                }
+                setModality(next);
+              }}
+              voiceState={voiceSession.voiceState}
+              interimTranscript={voiceSession.interimTranscript}
+              error={voiceSession.error}
+              onClearError={voiceSession.clearError}
+              onStartListening={voiceSession.startListening}
+              onStopListening={voiceSession.stopListening}
+              onStopSpeaking={voiceSession.stopSpeaking}
+              disabled={isStreaming}
+            />
+          )}
+
           {!isCompleted ? (
             <ChatInput
-              onSendMessage={handleSendMessage}
+              onSendMessage={(txt) => handleSendMessage(txt, false)}
               disabled={isStreaming}
+              isVoiceActive={modality === "VOICE"}
+              isListening={voiceSession.voiceState === "LISTENING"}
+              onToggleListening={() => {
+                if (voiceSession.voiceState === "LISTENING") {
+                  voiceSession.stopListening();
+                } else {
+                  voiceSession.startListening();
+                }
+              }}
+              voiceState={voiceSession.voiceState}
               placeholder={
                 isStreaming
                   ? "Interviewer is responding..."
+                  : modality === "VOICE"
+                  ? "Speak into microphone or type here..."
                   : "Type your answer or ask a clarifying question..."
               }
             />

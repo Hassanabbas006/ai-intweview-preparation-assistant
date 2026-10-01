@@ -96,26 +96,67 @@ model LoginLog {
   @@map("login_logs")
 }
 
+enum EvaluationJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  RETRYING
+  FAILED
+}
+
 // Mock interview sessions
 model InterviewSession {
-  id          String            @id @default(cuid())
-  userId      String            @map("user_id")
-  type        InterviewType
-  domain      String?
-  focusArea   String?           @map("focus_area")
-  difficulty  String?           @default("INTERMEDIATE")
-  score       Float?
-  modality    InterviewModality @default(TEXT)
-  startedAt   DateTime          @default(now()) @map("started_at")
-  completedAt DateTime?         @map("completed_at")
-  status      SessionStatus     @default(IN_PROGRESS)
+  id           String             @id @default(cuid())
+  userId       String             @map("user_id")
+  type         InterviewType
+  domain       String?
+  focusArea    String?            @map("focus_area")
+  difficulty   String?            @default("INTERMEDIATE")
+  score        Float?
+  masteryState Json?              @map("mastery_state")
+  turnCounter  Int                @default(0) @map("turn_counter")
+  modality     InterviewModality  @default(TEXT)
+  startedAt    DateTime           @default(now()) @map("started_at")
+  completedAt  DateTime?          @map("completed_at")
+  status       SessionStatus      @default(IN_PROGRESS)
 
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  report      InterviewReport?
-  messages    InterviewMessage[]
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report         InterviewReport?
+  messages       InterviewMessage[]
+  evaluationJobs EvaluationJob[]
 
   @@index([userId])
   @@map("interview_sessions")
+}
+
+// Durable Evaluation Job for transactional outbox & async background evaluation
+model EvaluationJob {
+  id                 String              @id @default(cuid())
+  idempotencyKey     String              @unique @map("idempotency_key")
+  sessionId          String              @map("session_id")
+  turnSequenceNumber Int                 @map("turn_sequence_number")
+  pillarSlug         String              @map("pillar_slug")
+  candidateMessage   String              @map("candidate_message") @db.Text
+  contextHistory     Json                @map("context_history")
+  status             EvaluationJobStatus @default(PENDING)
+  workerId           String?             @map("worker_id")
+  claimedAt          DateTime?           @map("claimed_at")
+  leaseExpiresAt     DateTime?           @map("lease_expires_at")
+  retryCount         Int                 @default(0) @map("retry_count")
+  maxRetries         Int                 @default(3) @map("max_retries")
+  timeoutMs          Int                 @default(5000) @map("timeout_ms")
+  nextRetryAt        DateTime?           @map("next_retry_at")
+  evaluationResult   Json?               @map("evaluation_result")
+  lastError          String?             @map("last_error") @db.Text
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  session            InterviewSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, turnSequenceNumber])
+  @@index([status, nextRetryAt])
+  @@index([status, leaseExpiresAt])
+  @@map("evaluation_jobs")
 }
 
 // Full conversation message turns for an interview session
@@ -132,18 +173,60 @@ model InterviewMessage {
   @@map("interview_messages")
 }
 
+enum ReportStatus {
+  GENERATING
+  WAITING_FOR_EVALUATIONS
+  READY
+  PARTIAL
+  FAILED
+}
+
+enum SynthesisStatus {
+  SYNTHESIS_PENDING
+  SYNTHESIS_GENERATING
+  SYNTHESIS_READY
+  SYNTHESIS_FAILED
+}
+
 // Evaluator report generated after an interview session
 model InterviewReport {
-  id         String           @id @default(cuid())
-  sessionId  String           @unique @map("session_id")
-  scores     Json             // Breakdown scores (e.g. communication, technical, overall)
-  strengths  Json             // Array of identified strengths
-  weaknesses Json             // Array of identified weaknesses
-  tips       Json             // Array of actionable improvement suggestions
-  createdAt  DateTime         @default(now()) @map("created_at")
+  id                      String           @id @default(cuid())
+  sessionId               String           @unique @map("session_id")
+  status                  ReportStatus     @default(GENERATING)
+  overallScore            Float?           @map("overall_score")
+  overallPerformanceLevel String?          @map("overall_performance_level")
+  startingDifficulty      String?          @map("starting_difficulty")
+  finalDifficulty         String?          @map("final_difficulty")
+  difficultyTrajectory    Json?            @map("difficulty_trajectory")
+  metrics                 Json?
+  pillarScores            Json?            @map("pillar_scores")
+  reconciliation          Json?
+  scores                  Json?            @default("{}")
+  strengths               Json?            @default("[]")
+  weaknesses              Json?            @default("[]")
+  tips                    Json?            @default("[]")
+  lastError               String?          @map("last_error") @db.Text
+  metadata                Json?
 
-  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // Phase 4B-1: Qualitative LLM Report Synthesis
+  synthesisStatus         SynthesisStatus  @default(SYNTHESIS_PENDING) @map("synthesis_status")
+  executiveSummary        String?          @map("executive_summary") @db.Text
+  structuredStrengths     Json?            @map("structured_strengths")
+  structuredWeaknesses    Json?            @map("structured_weaknesses")
+  structuredTips          Json?            @map("structured_tips")
+  synthesisModel          String?          @map("synthesis_model")
+  synthesisPromptVersion  String?          @map("synthesis_prompt_version")
+  synthesisCreatedAt      DateTime?        @map("synthesis_created_at")
+  synthesisUpdatedAt      DateTime?        @map("synthesis_updated_at")
+  synthesisError          String?          @map("synthesis_error") @db.Text
 
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+
+  session                 InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([synthesisStatus])
   @@map("interview_reports")
 }
 

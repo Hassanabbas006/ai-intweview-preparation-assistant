@@ -8,10 +8,9 @@ import {
 } from "./types";
 
 const GEMINI_MODELS = [
-  "gemini-3.5-flash-lite", // ~800ms - 1.3s response time
-  "gemini-3-flash-preview",
-  "gemini-3.5-flash",
-  "gemini-flash-latest",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
 const MODEL_TIMEOUT_MS = 10000; // 10s timeout per model attempt

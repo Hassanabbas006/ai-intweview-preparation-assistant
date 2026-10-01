@@ -13,7 +13,7 @@ const GROQ_MODELS = [
   "openai/gpt-oss-20b",
 ];
 
-const MODEL_TIMEOUT_MS = 6000; // 6s timeout per model attempt
+const MODEL_TIMEOUT_MS = 15000; // 15s timeout per model attempt
 
 export class GroqProvider implements LLMProvider {
   name = "groq";
