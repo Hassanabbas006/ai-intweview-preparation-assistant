@@ -324,7 +324,7 @@ export default function InterviewHubPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={`grid gap-6 ${selectedTrack === "DOMAIN" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
               {/* Seniority / Difficulty */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-text-secondary">Target Seniority / Difficulty</label>
@@ -342,7 +342,7 @@ export default function InterviewHubPage() {
               </div>
 
               {/* Domain selector (if DOMAIN track selected) */}
-              {selectedTrack === "DOMAIN" ? (
+              {selectedTrack === "DOMAIN" && (
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-text-secondary">Career Discipline / Domain</label>
                   <select
@@ -356,14 +356,6 @@ export default function InterviewHubPage() {
                       </option>
                     ))}
                   </select>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-text-secondary">Session Mode</label>
-                  <div className="p-2.5 rounded-input bg-background border border-border text-xs text-text-secondary flex items-center justify-between">
-                    <span>Text-based Interactive Chat</span>
-                    <Badge variant="success">Active</Badge>
-                  </div>
                 </div>
               )}
             </div>
